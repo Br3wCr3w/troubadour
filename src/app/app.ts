@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './app.css'
 })
 export class App implements OnInit {
-  protected readonly title = 'Troubadour';
+  protected readonly title = 'AI Troubadour';
   user: SocialUser | null = null;
   loggedIn: boolean = false;
 
