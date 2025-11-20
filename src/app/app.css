@@ -1,0 +1,309 @@
+/* Layout & Container */
+.app-container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Navbar */
+.navbar {
+    padding: 2rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.logo {
+    font-family: var(--font-header);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--text-main);
+}
+
+.highlight {
+    color: var(--primary-neon);
+}
+
+/* Hero Section */
+.hero-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    z-index: 10;
+}
+
+.hero-content {
+    text-align: center;
+    max-width: 800px;
+    width: 100%;
+}
+
+.glitch-text {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--text-main);
+    position: relative;
+    text-shadow: 2px 2px var(--accent-neon), -2px -2px var(--primary-neon);
+    animation: glitch 3s infinite;
+    margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+    font-family: var(--font-subheader);
+    font-size: 1.2rem;
+    color: var(--primary-neon);
+    letter-spacing: 6px;
+    margin-bottom: 3rem;
+    text-shadow: 0 0 10px var(--primary-neon);
+}
+
+/* Glass Card */
+.glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 3rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    max-width: 500px;
+    margin: 0 auto;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(0, 243, 255, 0.1);
+    border-color: rgba(0, 243, 255, 0.3);
+}
+
+.glass-card h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.glass-card p {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Login State */
+.google-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    transform: scale(1.1);
+    /* Make the button slightly larger */
+}
+
+/* Profile State */
+.avatar-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+}
+
+.avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--bg-dark);
+    position: relative;
+    z-index: 2;
+}
+
+.avatar-ring {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border-radius: 50%;
+    border: 2px solid var(--secondary-neon);
+    border-top-color: transparent;
+    animation: spin 4s linear infinite;
+    z-index: 1;
+}
+
+.user-name {
+    color: var(--secondary-neon);
+}
+
+.user-email {
+    font-family: var(--font-subheader);
+    letter-spacing: 1px;
+    margin-bottom: 2rem !important;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.8rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-family: var(--font-header);
+    font-size: 1.2rem;
+    color: var(--primary-neon);
+}
+
+/* Cyber Button */
+.cyber-btn {
+    background: transparent;
+    border: 1px solid var(--accent-neon);
+    color: var(--accent-neon);
+    padding: 1rem 2.5rem;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.cyber-btn:hover {
+    background: var(--accent-neon);
+    color: var(--bg-dark);
+    box-shadow: 0 0 20px var(--accent-neon);
+}
+
+/* Background Animations */
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+    perspective: 500px;
+    transform: rotateX(60deg) scale(2);
+    transform-origin: top center;
+    opacity: 0.3;
+    z-index: 1;
+    animation: grid-move 20s linear infinite;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    opacity: 0.6;
+}
+
+.orb-1 {
+    top: 10%;
+    left: 10%;
+    width: 300px;
+    height: 300px;
+    background: var(--secondary-neon);
+    animation: float 10s ease-in-out infinite;
+}
+
+.orb-2 {
+    bottom: 10%;
+    right: 10%;
+    width: 400px;
+    height: 400px;
+    background: var(--primary-neon);
+    animation: float 12s ease-in-out infinite reverse;
+}
+
+/* Keyframes */
+@keyframes glitch {
+    0% {
+        text-shadow: 2px 2px var(--accent-neon), -2px -2px var(--primary-neon);
+    }
+
+    25% {
+        text-shadow: -2px 2px var(--accent-neon), 2px -2px var(--primary-neon);
+    }
+
+    50% {
+        text-shadow: 2px -2px var(--accent-neon), -2px 2px var(--primary-neon);
+    }
+
+    75% {
+        text-shadow: -2px -2px var(--accent-neon), 2px 2px var(--primary-neon);
+    }
+
+    100% {
+        text-shadow: 2px 2px var(--accent-neon), -2px -2px var(--primary-neon);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(30px, -30px);
+    }
+}
+
+@keyframes grid-move {
+    0% {
+        transform: rotateX(60deg) scale(2) translateY(0);
+    }
+
+    100% {
+        transform: rotateX(60deg) scale(2) translateY(50px);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .glitch-text {
+        font-size: 2.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .glass-card {
+        padding: 2rem;
+        width: 90%;
+    }
+}

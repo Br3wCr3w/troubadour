@@ -1,0 +1,51 @@
+<div class="app-container">
+  <!-- Background Elements -->
+  <div class="grid-overlay"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <header class="navbar">
+    <div class="logo">TROUBA<span class="highlight">DOUR</span></div>
+  </header>
+
+  <main class="hero-section">
+    <div class="hero-content">
+      <h1 class="glitch-text" data-text="TROUBADOUR AI">TROUBADOUR AI</h1>
+      <p class="hero-subtitle">POWERED BY ARTIFICIAL INTELLIGENCE</p>
+
+      <div class="glass-card">
+        <div *ngIf="!user" class="login-state">
+          <h2>INITIALIZE LINK</h2>
+          <p>Connect your neural profile to enter the simulation.</p>
+          <div class="google-btn-wrapper">
+            <asl-google-signin-button type="standard" theme="filled_blue" size="large" text="signin_with"
+              shape="pill"></asl-google-signin-button>
+          </div>
+        </div>
+
+        <div *ngIf="user" class="profile-state">
+          <div class="avatar-wrapper">
+            <img [src]="user.photoUrl" alt="User Avatar" class="avatar">
+            <div class="avatar-ring"></div>
+          </div>
+          <h2>WELCOME, <span class="user-name">{{ user.name }}</span></h2>
+          <p class="user-email">{{ user.email }}</p>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">LEVEL</span>
+              <span class="stat-value">01</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">XP</span>
+              <span class="stat-value">0/1000</span>
+            </div>
+          </div>
+          <button (click)="signOut()" class="cyber-btn">
+            <span class="btn-content">DISCONNECT</span>
+            <span class="glitch-effect"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
