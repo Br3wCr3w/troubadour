@@ -1,0 +1,18 @@
+{
+    "hosting": {
+        "public": "dist/google-auth-app/browser",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "cleanUrls": true,
+        "trailingSlash": false,
+        "rewrites": [
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    }
+}
