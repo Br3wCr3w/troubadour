@@ -18,17 +18,19 @@
           <h2>INITIALIZE LINK</h2>
           <p>Connect your neural profile to enter the simulation.</p>
           <div class="google-btn-wrapper">
-            <asl-google-signin-button type="standard" theme="filled_blue" size="large" text="signin_with"
-              shape="pill"></asl-google-signin-button>
+            <button (click)="signInWithGoogle()" class="cyber-btn">
+              <span class="btn-content">CONNECT NEURAL LINK</span>
+              <span class="glitch-effect"></span>
+            </button>
           </div>
         </div>
 
         <div *ngIf="user" class="profile-state">
           <div class="avatar-wrapper">
-            <img [src]="user.photoUrl" alt="User Avatar" class="avatar">
+            <img [src]="user.photoURL" alt="User Avatar" class="avatar">
             <div class="avatar-ring"></div>
           </div>
-          <h2>WELCOME, <span class="user-name">{{ user.name }}</span></h2>
+          <h2>WELCOME, <span class="user-name">{{ user.displayName }}</span></h2>
           <p class="user-email">{{ user.email }}</p>
           <div class="stats-grid">
             <div class="stat-item">

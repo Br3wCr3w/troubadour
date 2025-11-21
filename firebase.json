@@ -1,4 +1,7 @@
 {
+    "firestore": {
+        "rules": "firestore.rules"
+    },
     "hosting": {
         "public": "dist/google-auth-app/browser",
         "ignore": [

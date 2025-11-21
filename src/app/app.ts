@@ -1,54 +1,54 @@
-import { Component, OnInit } from '@angular/core';
-import { SocialAuthService, GoogleSigninButtonModule, SocialUser } from '@abacritt/angularx-social-login';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Auth, GoogleAuthProvider, signInWithPopup, user, User, signOut } from '@angular/fire/auth';
+import { UserService } from './services/user.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, GoogleSigninButtonModule],
+  imports: [CommonModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   protected readonly title = 'AI Troubadour';
-  user: SocialUser | null = null;
+  user: User | null = null;
   loggedIn: boolean = false;
 
-  constructor(private authService: SocialAuthService) { }
+  private auth: Auth = inject(Auth);
+  private userService: UserService = inject(UserService);
+  private user$ = user(this.auth);
+  private subscription: Subscription | undefined;
 
   ngOnInit() {
-    console.log('App initialized');
-
-    // Check localStorage for existing session
-    const savedUser = localStorage.getItem('troubadour_user');
-    if (savedUser) {
-      this.user = JSON.parse(savedUser);
-      this.loggedIn = true;
-      console.log('Restored user from storage:', this.user?.name);
-    }
-
-    this.authService.authState.subscribe((user) => {
-      console.log('Auth State Changed:', user);
-      if (user) {
-        this.user = user;
-        this.loggedIn = true;
-        localStorage.setItem('troubadour_user', JSON.stringify(user));
-        console.log('User logged in and saved:', user.name);
-      } else {
-        // Only clear if we don't have a saved user (or if explicit logout happened)
-        // But authState emits null on load if autoLogin fails, so we shouldn't clear immediately if we just restored.
-        // However, we need to know if this is a logout event or an initial load event.
-        // The library doesn't distinguish well.
-        // Better strategy: Only save on login. Clear on explicit signOut.
+    this.subscription = this.user$.subscribe(async (currentUser) => {
+      this.user = currentUser;
+      this.loggedIn = !!currentUser;
+      if (currentUser) {
+        await this.userService.saveUserProfile(currentUser);
       }
     });
   }
 
-  signOut(): void {
-    this.authService.signOut();
-    this.user = null;
-    this.loggedIn = false;
-    localStorage.removeItem('troubadour_user');
-    console.log('User signed out and storage cleared');
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
+  }
+
+  async signInWithGoogle(): Promise<void> {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(this.auth, provider);
+    } catch (error) {
+      console.error('Login failed', error);
+    }
+  }
+
+  async signOut(): Promise<void> {
+    try {
+      await signOut(this.auth);
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
   }
 }
