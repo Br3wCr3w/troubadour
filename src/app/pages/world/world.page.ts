@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 
 @Component({
   selector: 'app-world',
@@ -7,14 +7,6 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="game-container">
-      <!-- Header -->
-      <div class="game-header">
-        <div class="logo">
-          <span class="dnd-logo">D&D</span>
-          <span class="title">GAUNTLET QUEST</span>
-        </div>
-      </div>
-
       <!-- Left Sidebar: Party -->
       <div class="party-sidebar">
         <div class="character-card" *ngFor="let char of party">
@@ -43,16 +35,6 @@ import { CommonModule } from '@angular/common';
                  [style.top.px]="tile.y">
             </div>
           </div>
-          
-          <!-- Entities (simplified placement) -->
-          <div class="entity hero" style="top: 200px; left: 300px;">🧝‍♀️</div>
-          <div class="entity hero" style="top: 240px; left: 260px;">🧙‍♂️</div>
-          <div class="entity hero" style="top: 280px; left: 220px;">🧔</div>
-          
-          <div class="entity monster" style="top: 150px; left: 400px;">👾</div>
-          <div class="entity monster" style="top: 180px; left: 450px;">👹</div>
-          
-          <div class="entity prop" style="top: 100px; left: 500px;">📦</div>
         </div>
       </div>
 
@@ -105,42 +87,10 @@ import { CommonModule } from '@angular/common';
       background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
     }
 
-    /* Header */
-    .game-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 80px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-      pointer-events: none;
-    }
-    .logo {
-      text-align: center;
-      text-shadow: 0 0 10px #a0f;
-    }
-    .dnd-logo {
-      display: block;
-      font-size: 1.2rem;
-      color: #e33;
-      font-weight: bold;
-    }
-    .title {
-      font-size: 2rem;
-      font-weight: 800;
-      background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-    }
-
     /* Sidebar */
     .party-sidebar {
       position: absolute;
-      top: 100px;
+      top: 20px;
       left: 20px;
       width: 80px;
       display: flex;
@@ -343,7 +293,8 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class WorldPage {
+export class WorldPage implements OnInit, OnDestroy {
+  private document = inject(DOCUMENT);
   party = [
     { name: 'Dwarf', color: '#a52', hp: 80, mp: 20 },
     { name: 'Elf', color: '#5a2', hp: 60, mp: 80 },
@@ -360,5 +311,13 @@ export class WorldPage {
         this.tiles.push({x: i*40, y: j*40});
       }
     }
+  }
+
+  ngOnInit(): void {
+    this.document.body.classList.add('world-no-header');
+  }
+
+  ngOnDestroy(): void {
+    this.document.body.classList.remove('world-no-header');
   }
 }

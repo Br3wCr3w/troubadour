@@ -7,6 +7,13 @@
     overflow: hidden;
 }
 
+:host-context(.world-no-header) .navbar,
+:host-context(.world-no-header) .orb,
+:host-context(.world-no-header) .orb-1,
+:host-context(.world-no-header) .orb-2 {
+    display: none !important;
+}
+
 .navbar {
     padding: 2rem 3rem;
     display: flex;
