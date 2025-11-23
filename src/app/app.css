@@ -23,25 +23,6 @@
     font-weight: 700;
     letter-spacing: 4px;
     color: var(--text-main);
-}
-
-.highlight {
-    color: var(--primary-neon);
-}
-
-/* Hero Section */
-.hero-section {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 2rem;
-    z-index: 10;
-}
-
-.hero-content {
-    text-align: center;
-    max-width: 800px;
     width: 100%;
 }
 
