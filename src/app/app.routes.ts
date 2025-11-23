@@ -1,7 +1,4 @@
 import { Routes } from '@angular/router';
-import { LoginPage } from './pages/login/login.page';
-import { CharacterSelectPage } from './pages/character-select/character-select.page';
-import { WorldPage } from './pages/world/world.page';
 import { inject } from '@angular/core';
 import { Auth, user } from '@angular/fire/auth';
 import { map } from 'rxjs/operators';
@@ -39,17 +36,17 @@ export const routes: Routes = [
     },
     {
         path: 'login',
-        component: LoginPage,
+        loadComponent: () => import('./pages/login/login.page').then(m => m.LoginPage),
         canActivate: [loginGuard]
     },
     {
         path: 'characters',
-        component: CharacterSelectPage,
+        loadComponent: () => import('./pages/character-select/character-select.page').then(m => m.CharacterSelectPage),
         canActivate: [authGuard]
     },
     {
         path: 'world',
-        component: WorldPage,
+        loadComponent: () => import('./pages/world/world.page').then(m => m.WorldPage),
         canActivate: [authGuard]
     }
 ];

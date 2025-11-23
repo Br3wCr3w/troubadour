@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { Auth, signOut } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-character-select',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="page-container">
       <header class="page-header">

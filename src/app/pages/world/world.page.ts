@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CdkDrag } from '@angular/cdk/drag-drop';
 
 @Component({
     selector: 'app-world',
     standalone: true,
-    imports: [CommonModule, CdkDrag],
+    imports: [CdkDrag],
     template: `
     <div class="world-container">
       <div class="map-area">
