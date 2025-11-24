@@ -1,15 +1,16 @@
 import { Injectable, inject, NgZone } from '@angular/core';
+import { Firestore } from '@angular/fire/firestore';
 import {
-  Firestore,
   collection,
   addDoc,
   query,
   orderBy,
   limit,
   Timestamp,
-  collectionData,
-} from '@angular/fire/firestore';
+  onSnapshot,
+} from 'firebase/firestore';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface ChatMessage {
   id?: string;
@@ -35,8 +36,22 @@ export class ChatService {
   getMessages(): Observable<ChatMessage[]> {
     const chatsCol = collection(this.firestore, 'chats');
     const q = query(chatsCol, orderBy('timestamp', 'asc'), limit(100));
-    // Use AngularFire's collectionData to remain inside Angular injection context
-    return collectionData(q, { idField: 'id' }) as unknown as Observable<ChatMessage[]>;
+
+    // Subscribe using the same SDK instance for both Query creation and onSnapshot.
+    return new Observable<ChatMessage[]>((subscriber) => {
+      const unsubscribe = onSnapshot(
+        q,
+        (snap) => {
+          const messages = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<ChatMessage, 'id'>),
+          })) as ChatMessage[];
+          subscriber.next(messages);
+        },
+        (err) => subscriber.error(err)
+      );
+      return () => unsubscribe();
+    });
   }
 
   async sendMessage(content: string, senderName: string, senderId: string, type: 'global' | 'party' = 'global'): Promise<void> {
