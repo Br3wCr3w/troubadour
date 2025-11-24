@@ -1,12 +1,19 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, ElementRef, AfterViewInit, HostListener, inject } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Auth, user } from '@angular/fire/auth';
+import { ChatService, ChatMessage } from '../../services/chat.service';
+import { Observable, Subscription, catchError, of } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-world',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="game-container">
+      <canvas #battleMap class="battle-map"></canvas>
+
       <!-- Left Sidebar: Party -->
       <div class="party-sidebar">
         <div class="character-card" *ngFor="let char of party">
@@ -25,19 +32,6 @@ import { CommonModule, DOCUMENT } from '@angular/common';
         </div>
       </div>
 
-      <!-- Main Isometric View -->
-      <div class="viewport">
-        <div class="iso-world">
-          <!-- Floor -->
-          <div class="floor-grid">
-            <div class="tile" *ngFor="let tile of tiles" 
-                 [style.left.px]="tile.x" 
-                 [style.top.px]="tile.y">
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Bottom Left: Chat -->
       <div class="chat-panel">
         <div class="chat-header">
@@ -47,14 +41,15 @@ import { CommonModule, DOCUMENT } from '@angular/common';
           </div>
           <div class="chat-tools">⚙️</div>
         </div>
-        <div class="chat-log">
-          <div class="msg system">Player 2: Aww, a mimic!</div>
-          <div class="msg system">Player 2: Aww, a mimic!</div>
-          <div class="msg alert">Player 4 needs healing!</div>
-          <div class="msg alert">Player 4 needs healing!</div>
+        <div #chatLog class="chat-log">
+          <div class="msg system" *ngIf="chatError">System: Error connecting to chat server. {{chatError}}</div>
+          <div class="msg" *ngFor="let msg of chatMessages$ | async" [ngClass]="msg.type">
+            <span class="sender" *ngIf="msg.type !== 'system'">{{msg.senderName}}:</span>
+            {{msg.content}}
+          </div>
         </div>
         <div class="chat-input">
-          <input type="text" placeholder="|">
+          <input type="text" placeholder="Type a message..." [(ngModel)]="chatInput" (keyup.enter)="sendMessage()">
         </div>
       </div>
 
@@ -85,6 +80,15 @@ import { CommonModule, DOCUMENT } from '@angular/common';
       width: 100%;
       height: 100%;
       background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+    }
+
+    .battle-map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
     }
 
     /* Sidebar */
@@ -137,60 +141,6 @@ import { CommonModule, DOCUMENT } from '@angular/common';
     .hp-fill { background: #3e3; height: 100%; }
     .mp-fill { background: #33e; height: 100%; }
 
-    /* Viewport & Isometric World */
-    .viewport {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      perspective: 1000px;
-    }
-    .iso-world {
-      position: relative;
-      width: 800px;
-      height: 600px;
-      transform: rotateX(60deg) rotateZ(-45deg);
-      transform-style: preserve-3d;
-    }
-    .floor-grid {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
-      background-size: 40px 40px;
-      background-color: #1a1a1a;
-      box-shadow: 0 0 50px rgba(0,0,0,0.5);
-      border: 10px solid #333;
-    }
-    .tile {
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    .entity {
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      font-size: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: rotateZ(45deg) rotateX(-60deg) translateY(-20px); /* Counter-rotate to face camera */
-      filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
-      z-index: 10;
-    }
-
     /* Chat Panel */
     .chat-panel {
       position: absolute;
@@ -205,6 +155,7 @@ import { CommonModule, DOCUMENT } from '@angular/common';
       flex-direction: column;
       overflow: hidden;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      z-index: 90;
     }
     .chat-header {
       display: flex;
@@ -230,9 +181,12 @@ import { CommonModule, DOCUMENT } from '@angular/common';
       overflow-y: auto;
       font-size: 0.9rem;
     }
-    .msg { margin-bottom: 4px; }
-    .msg.system { color: #aaf; }
+    .msg { margin-bottom: 4px; word-wrap: break-word; }
+    .msg .sender { font-weight: bold; margin-right: 5px; color: #ccc; }
+    .msg.system { color: #aaf; font-style: italic; }
     .msg.alert { color: #f88; }
+    .msg.party { color: #8f8; }
+    .msg.global { color: #fff; }
     
     .chat-input {
       padding: 8px;
@@ -254,6 +208,7 @@ import { CommonModule, DOCUMENT } from '@angular/common';
       display: flex;
       align-items: flex-end;
       gap: 20px;
+      z-index: 90;
     }
     .main-actions {
       display: flex;
@@ -293,8 +248,20 @@ import { CommonModule, DOCUMENT } from '@angular/common';
     }
   `]
 })
-export class WorldPage implements OnInit, OnDestroy {
+export class WorldPage implements OnInit, OnDestroy, AfterViewInit {
   private document = inject(DOCUMENT);
+  private chatService = inject(ChatService);
+  private auth = inject(Auth);
+  
+  @ViewChild('battleMap') canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chatLog') chatLogRef!: ElementRef<HTMLDivElement>;
+  
+  private ctx!: CanvasRenderingContext2D | null;
+  user$ = user(this.auth);
+  chatMessages$: Observable<ChatMessage[]>;
+  chatInput = '';
+  chatError = '';
+
   party = [
     { name: 'Dwarf', color: '#a52', hp: 80, mp: 20 },
     { name: 'Elf', color: '#5a2', hp: 60, mp: 80 },
@@ -302,15 +269,17 @@ export class WorldPage implements OnInit, OnDestroy {
     { name: 'Rogue', color: '#555', hp: 70, mp: 40 }
   ];
 
-  tiles: {x: number, y: number}[] = [];
-
   constructor() {
-    // Generate some dummy floor tiles
-    for(let i=0; i<10; i++) {
-      for(let j=0; j<10; j++) {
-        this.tiles.push({x: i*40, y: j*40});
-      }
-    }
+    this.chatMessages$ = this.chatService.getMessages().pipe(
+      tap(() => this.scrollToBottom()),
+      catchError(err => {
+        console.error('Chat subscription error:', err);
+        setTimeout(() => {
+          this.chatError = 'Failed to load chat.';
+        });
+        return of([]);
+      })
+    );
   }
 
   ngOnInit(): void {
@@ -319,5 +288,92 @@ export class WorldPage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.document.body.classList.remove('world-no-header');
+  }
+
+  ngAfterViewInit(): void {
+    this.initCanvas();
+    this.scrollToBottom();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.initCanvas();
+  }
+
+  private initCanvas() {
+    const canvas = this.canvasRef.nativeElement;
+    this.ctx = canvas.getContext('2d');
+    if (!this.ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    this.drawPlaceholder();
+  }
+
+  private drawPlaceholder() {
+    if (!this.ctx) return;
+    const { width, height } = this.canvasRef.nativeElement;
+
+    this.ctx.clearRect(0, 0, width, height);
+    
+    const gridSize = 50;
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    this.ctx.lineWidth = 1;
+
+    for (let x = 0; x < width; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, height);
+      this.ctx.stroke();
+    }
+
+    for (let y = 0; y < height; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(width, y);
+      this.ctx.stroke();
+    }
+
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const size = Math.random() * 2;
+      
+      this.ctx.fillStyle = Math.random() > 0.5 ? '#00f3ff' : '#ff00ff'; 
+      this.ctx.globalAlpha = Math.random() * 0.5 + 0.2;
+      
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, size, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    this.ctx.globalAlpha = 1.0;
+  }
+
+  async sendMessage() {
+    if (!this.chatInput.trim()) return;
+
+    const currentUser = this.auth.currentUser;
+    // Use a random ID if anonymous to avoid permission errors if we had strict rules
+    // But we relaxed rules, so this is just for display
+    const senderName = currentUser?.displayName || 'Anonymous';
+    const senderId = currentUser?.uid || 'anon-' + Math.random().toString(36).substr(2, 9);
+
+    try {
+      await this.chatService.sendMessage(this.chatInput, senderName, senderId);
+      this.chatInput = '';
+      this.chatError = '';
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      this.chatError = error.message || 'Could not send message.';
+    }
+  }
+
+  private scrollToBottom() {
+    if (this.chatLogRef) {
+      setTimeout(() => {
+        this.chatLogRef.nativeElement.scrollTop = this.chatLogRef.nativeElement.scrollHeight;
+      }, 100);
+    }
   }
 }
