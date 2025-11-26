@@ -1,13 +1,15 @@
 import { Routes } from '@angular/router';
 import { inject } from '@angular/core';
-import { Auth, user } from '@angular/fire/auth';
+
 import { map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
+import { AuthService } from './core/services/auth.service';
+
 const authGuard = () => {
-    const auth = inject(Auth);
+    const authService = inject(AuthService);
     const router = inject(Router);
-    return user(auth).pipe(
+    return authService.user$.pipe(
         map(user => {
             if (user) return true;
             router.navigate(['/login']);
@@ -17,9 +19,9 @@ const authGuard = () => {
 };
 
 const loginGuard = () => {
-    const auth = inject(Auth);
+    const authService = inject(AuthService);
     const router = inject(Router);
-    return user(auth).pipe(
+    return authService.user$.pipe(
         map(user => {
             if (!user) return true;
             router.navigate(['/characters']);
