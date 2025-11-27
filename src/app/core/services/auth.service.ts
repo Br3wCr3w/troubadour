@@ -18,7 +18,7 @@ export class AuthService {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(this.auth, provider);
-            this.router.navigate(['/characters']);
+            this.router.navigate(['/world']);
         } catch (error) {
             console.error('Login failed', error);
             throw error;

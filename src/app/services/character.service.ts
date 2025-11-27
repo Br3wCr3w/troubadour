@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc, getDoc } from '@angular/fire/firestore';
+import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { Character } from '../core/models/character.model';
 
 @Injectable({
@@ -7,8 +8,18 @@ import { Character } from '../core/models/character.model';
 })
 export class CharacterService {
     private firestore: Firestore = inject(Firestore);
+    private storage: Storage = inject(Storage);
 
     constructor() { }
+
+    async uploadImage(file: File, uid: string): Promise<string> {
+        const timestamp = Date.now();
+        const filePath = `character-images/${uid}/${timestamp}_${file.name}`;
+        const storageRef = ref(this.storage, filePath);
+
+        const snapshot = await uploadBytes(storageRef, file);
+        return await getDownloadURL(snapshot.ref);
+    }
 
     async saveCharacter(uid: string, character: Omit<Character, 'ownerId'>): Promise<void> {
         const charRef = doc(this.firestore, 'characters', uid);

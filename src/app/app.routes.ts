@@ -24,7 +24,7 @@ const loginGuard = () => {
     return authService.user$.pipe(
         map(user => {
             if (!user) return true;
-            router.navigate(['/characters']);
+            router.navigate(['/world']);
             return false;
         })
     );

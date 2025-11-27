@@ -169,6 +169,8 @@ export class PlayerEditPopupComponent implements OnInit {
 
     tempPlayerStats: any;
 
+    selectedFile: File | null = null;
+
     ngOnInit() {
         this.tempPlayerStats = { ...this.playerCharacter };
     }
@@ -176,6 +178,7 @@ export class PlayerEditPopupComponent implements OnInit {
     onFileSelected(event: any) {
         const file = event.target.files[0];
         if (file) {
+            this.selectedFile = file;
             const reader = new FileReader();
             reader.onload = (e: any) => {
                 this.tempPlayerStats.image = e.target.result;
@@ -185,7 +188,7 @@ export class PlayerEditPopupComponent implements OnInit {
     }
 
     onSave() {
-        this.save.emit(this.tempPlayerStats);
+        this.save.emit({ stats: this.tempPlayerStats, file: this.selectedFile });
     }
 
     onCancel() {

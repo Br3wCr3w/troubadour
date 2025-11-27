@@ -114,13 +114,18 @@ export class WorldPage implements OnInit, OnDestroy {
     this.showPlayerPopup = false;
   }
 
-  async onSavePlayerStats(newStats: any) {
-    this.playerCharacter = { ...newStats };
+  async onSavePlayerStats(event: { stats: any, file: File | null }) {
+    const { stats, file } = event;
+    this.playerCharacter = { ...stats };
     this.closePlayerPopup();
 
     const currentUser = this.auth.currentUser;
     if (currentUser) {
       try {
+        if (file) {
+          const imageUrl = await this.characterService.uploadImage(file, currentUser.uid);
+          this.playerCharacter.image = imageUrl;
+        }
         await this.characterService.saveCharacter(currentUser.uid, this.playerCharacter);
       } catch (error) {
         console.error('Failed to save character:', error);
