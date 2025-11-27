@@ -1,52 +1,19 @@
 <div class="game-container">
-    <canvas #battleMap class="battle-map"></canvas>
+    <app-battle-map></app-battle-map>
 
     <!-- Left Sidebar: Party -->
-    <div class="party-sidebar">
-        <div class="character-card" *ngFor="let char of party">
-            <div class="char-avatar" [style.background-color]="char.color">
-                <!-- Placeholder for avatar image -->
-                <span class="char-initial">{{char.name[0]}}</span>
-            </div>
-            <div class="char-info">
-                <div class="hp-bar">
-                    <div class="hp-fill" [style.width.%]="char.hp"></div>
-                </div>
-                <div class="mp-bar">
-                    <div class="mp-fill" [style.width.%]="char.mp"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <app-party-sidebar [party]="party" [playerCharacter]="playerCharacter" (openPlayerPopup)="openPlayerPopup()">
+    </app-party-sidebar>
 
     <!-- Bottom Left: Chat -->
-    <div class="chat-panel">
-        <div class="chat-header">
-            <div class="chat-tabs">
-                <button class="active">Global</button>
-                <button>Party</button>
-            </div>
-            <div class="chat-tools">⚙️</div>
-        </div>
-        <div #chatLog class="chat-log">
-            <div class="msg system" *ngIf="chatError">System: Error connecting to chat server. {{chatError}}</div>
-            <div class="msg" *ngFor="let msg of chatMessages$ | async" [ngClass]="msg.type">
-                <span class="sender" *ngIf="msg.type !== 'system'">{{msg.senderName}}:</span>
-                {{msg.content}}
-            </div>
-        </div>
-        <div class="chat-input">
-            <input type="text" placeholder="Type a message..." [(ngModel)]="chatInput" (keyup.enter)="sendMessage()">
-        </div>
-    </div>
+    <app-chat [chatMessages$]="chatMessages$" [chatError]="chatError" (sendMessage)="onSendMessage($event)">
+    </app-chat>
 
     <!-- Bottom Right: Actions -->
-    <div class="action-panel">
-        <div class="main-actions">
-            <button class="action-btn attack">⚔️</button>
-            <button class="action-btn defend">🛡️</button>
-            <button class="action-btn item">🧪</button>
-        </div>
-        <div class="spell-slot">🔮</div>
-    </div>
+    <app-game-actions></app-game-actions>
+
+    <!-- Player Stats Popup -->
+    <app-player-edit-popup *ngIf="showPlayerPopup" [playerCharacter]="playerCharacter"
+        (save)="onSavePlayerStats($event)" (cancel)="closePlayerPopup()">
+    </app-player-edit-popup>
 </div>
