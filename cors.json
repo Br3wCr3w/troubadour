@@ -12,8 +12,7 @@
             "OPTIONS"
         ],
         "responseHeader": [
-            "Content-Type",
-            "x-goog-meta-foo"
+            "*"
         ],
         "maxAgeSeconds": 3600
     }
