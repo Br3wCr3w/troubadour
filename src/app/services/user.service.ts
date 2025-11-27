@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, setDoc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
 import { User } from '@angular/fire/auth';
 import { UserProfile } from '../core/models/user.model';
 
@@ -40,5 +41,20 @@ export class UserService {
             console.log('No such document!');
             return null;
         }
+    }
+
+    getRecentUsers(): Observable<UserProfile[]> {
+        const usersCol = collection(this.firestore, 'users');
+        const q = query(usersCol, orderBy('lastLogin', 'desc'), limit(10));
+
+        return new Observable<UserProfile[]>((subscriber) => {
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const users = snapshot.docs.map(doc => doc.data() as UserProfile);
+                subscriber.next(users);
+            }, (error) => {
+                subscriber.error(error);
+            });
+            return () => unsubscribe();
+        });
     }
 }

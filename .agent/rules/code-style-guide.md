@@ -1,6 +1,8 @@
 ---
 trigger: always_on
-glob:
-description:
 ---
 
+Use component architecture.
+Use SOC and DRY patterns.
+Remove unused imports.
+Do not use manual subscriptions, instead use pipe async.

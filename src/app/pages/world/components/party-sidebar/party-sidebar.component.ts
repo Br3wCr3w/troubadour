@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { UserProfile } from '../../../../core/models/user.model';
 
 @Component({
     selector: 'app-party-sidebar',
@@ -21,16 +22,18 @@ import { CommonModule } from '@angular/common';
             </div>
         </div>
 
-        <div class="character-card" *ngFor="let char of party">
-            <div class="char-avatar" [style.background-color]="char.color">
-                <span class="char-initial">{{char.name[0]}}</span>
+        <div class="character-card" *ngFor="let user of party" [title]="user.displayName">
+            <div class="char-avatar" [style.background-color]="getUserColor(user.displayName || 'Anon')">
+                <img *ngIf="user.photoURL" [src]="user.photoURL" class="avatar-img" [alt]="user.displayName">
+                <span *ngIf="!user.photoURL" class="char-initial">{{(user.displayName || 'A')[0]}}</span>
             </div>
             <div class="char-info">
+                <!-- Mock HP/MP for other users since we don't have that data yet -->
                 <div class="hp-bar">
-                    <div class="hp-fill" [style.width.%]="char.hp"></div>
+                    <div class="hp-fill" [style.width.%]="100"></div>
                 </div>
                 <div class="mp-bar">
-                    <div class="mp-fill" [style.width.%]="char.mp"></div>
+                    <div class="mp-fill" [style.width.%]="100"></div>
                 </div>
             </div>
         </div>
@@ -68,6 +71,7 @@ import { CommonModule } from '@angular/common';
         font-size: 1.5rem;
         font-weight: bold;
         color: rgba(255, 255, 255, 0.8);
+        overflow: hidden;
     }
 
     .char-info {
@@ -113,7 +117,6 @@ import { CommonModule } from '@angular/common';
     .avatar-img {
         width: 100%;
         height: 100%;
-        border-radius: 50%;
         object-fit: cover;
     }
 
@@ -123,11 +126,20 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class PartySidebarComponent {
-    @Input() party: any[] = [];
+    @Input() party: UserProfile[] | null = [];
     @Input() playerCharacter: any;
     @Output() openPlayerPopup = new EventEmitter<void>();
 
     onOpenPlayerPopup() {
         this.openPlayerPopup.emit();
+    }
+
+    getUserColor(name: string): string {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + '00000'.substring(0, 6 - c.length) + c;
     }
 }

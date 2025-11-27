@@ -2,7 +2,8 @@
     <app-battle-map></app-battle-map>
 
     <!-- Left Sidebar: Party -->
-    <app-party-sidebar [party]="party" [playerCharacter]="playerCharacter" (openPlayerPopup)="openPlayerPopup()">
+    <app-party-sidebar [party]="(party$ | async) || []" [playerCharacter]="playerCharacter"
+        (openPlayerPopup)="openPlayerPopup()">
     </app-party-sidebar>
 
     <!-- Bottom Left: Chat -->
