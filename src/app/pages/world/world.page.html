@@ -15,7 +15,7 @@
         (sendMessage)="onSendMessage($event)">
     </app-chat>
 
-    <app-game-actions class="action-panel"></app-game-actions>
+    <app-game-actions class="action-panel" (generateMap)="onGenerateMap()"></app-game-actions>
 
     <app-player-edit-popup *ngIf="showPlayerPopup" [playerCharacter]="playerCharacter"
         (save)="onSavePlayerStats($event)" (cancel)="closePlayerPopup()">

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
             <button class="action-btn defend">🛡️</button>
             <button class="action-btn item">🧪</button>
         </div>
-        <div class="spell-slot">🔮</div>
+        <div class="spell-slot" (click)="onGenerateMap()">🔮</div>
     </div>
   `,
     styles: [`
@@ -77,7 +77,14 @@ import { CommonModule } from '@angular/common';
         justify-content: center;
         font-size: 2rem;
         box-shadow: 0 0 20px #a0f;
+        cursor: pointer;
     }
   `]
 })
-export class GameActionsComponent { }
+export class GameActionsComponent {
+    @Output() generateMap = new EventEmitter<void>();
+
+    onGenerateMap() {
+        this.generateMap.emit();
+    }
+}

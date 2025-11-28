@@ -157,4 +157,8 @@ export class WorldPage implements OnInit, OnDestroy {
 
     await this.encounterService.createEncounter(combatants);
   }
+
+  onGenerateMap() {
+    this.battleMap.generateNewMap();
+  }
 }

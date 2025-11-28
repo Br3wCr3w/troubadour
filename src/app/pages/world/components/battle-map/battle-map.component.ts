@@ -1,6 +1,7 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, AfterViewInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import Phaser from 'phaser';
+import { MapService, MapData } from '../../../../services/map.service';
 
 @Component({
     selector: 'app-battle-map',
@@ -25,6 +26,7 @@ import Phaser from 'phaser';
 export class BattleMapComponent implements AfterViewInit, OnDestroy {
     @ViewChild('gameContainer') gameContainer!: ElementRef<HTMLElement>;
     private game: Phaser.Game | null = null;
+    private mapService = inject(MapService);
 
     ngAfterViewInit(): void {
         this.initGame();
@@ -44,7 +46,7 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
             width: this.gameContainer.nativeElement.clientWidth,
             height: this.gameContainer.nativeElement.clientHeight,
             backgroundColor: '#000000',
-            scene: [MainScene],
+            scene: [new MainScene(this.mapService)], // Pass service to scene
             physics: {
                 default: 'arcade',
                 arcade: {
@@ -60,6 +62,14 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
 
         this.game = new Phaser.Game(config);
     }
+
+    generateNewMap() {
+        const scene = this.game?.scene.getScene('MainScene') as MainScene;
+        if (scene) {
+            scene.generateNewMap();
+        }
+    }
+
     onDragOver(event: DragEvent) {
         event.preventDefault();
         event.dataTransfer!.dropEffect = 'copy';
@@ -236,12 +246,15 @@ class MainScene extends Phaser.Scene {
     private selectedToken: Phaser.GameObjects.Container | Phaser.GameObjects.Sprite | null = null;
     private selectionRing!: Phaser.GameObjects.Image;
     private wallsGroup!: Phaser.GameObjects.Group;
+    private doorsGroup!: Phaser.GameObjects.Group;
+    private tilemap!: Phaser.Tilemaps.Tilemap;
+    private floorLayer!: Phaser.Tilemaps.TilemapLayer;
     // private elf!: Phaser.GameObjects.Sprite; // Removed
-    private ogre!: Phaser.GameObjects.Sprite;
+    private ogre!: Phaser.GameObjects.Sprite | null;
     private isDragging = false;
     private playerTokens: Phaser.GameObjects.Sprite[] = [];
 
-    constructor() {
+    constructor(private mapService: MapService) {
         super({ key: 'MainScene' });
     }
 
@@ -365,13 +378,15 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
-        this.generateMap();
-
         // Inputs
         this.input.on('pointermove', this.handleCameraPan, this);
         this.input.on('wheel', this.handleCameraZoom, this);
-        this.input.keyboard?.on('keydown-R', () => {
-            this.scene.restart();
+
+        // Subscribe to map updates from Firestore
+        this.mapService.currentMap$.subscribe(mapData => {
+            if (mapData) {
+                this.renderMap(mapData);
+            }
         });
 
         // Selection State
@@ -385,27 +400,52 @@ class MainScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1
         });
+
+        this.wallsGroup = this.add.group();
+        this.doorsGroup = this.add.group();
     }
 
-    generateMap() {
+    generateNewMap() {
         const generator = new DungeonGenerator(this.mapWidth, this.mapHeight);
         const dungeonData = generator.generate();
+
+        // Create initial map data structure
+        const mapData: MapData = {
+            grid: dungeonData.map,
+            rooms: dungeonData.rooms,
+            doors: dungeonData.doors,
+            tokens: [], // Initial tokens will be added during render or separately
+            createdAt: Date.now()
+        };
+
+        this.mapService.saveMap(mapData);
+        // No need to call renderMap here, the subscription will handle it
+    }
+
+    saveTokenState() {
+        const tokens = this.getEncounterTokens();
+        this.mapService.updateTokens(tokens);
+    }
+
+    renderMap(dungeonData: MapData) {
+        this.clearMap();
+
         const rooms = dungeonData.rooms;
-        const grid = dungeonData.map;
+        const grid = dungeonData.grid;
         const doors = dungeonData.doors;
 
         // 1. Render Floor (Layer 0)
-        const map = this.make.tilemap({ tileWidth: 32, tileHeight: 32, width: this.mapWidth, height: this.mapHeight });
-        const tileset = map.addTilesetImage('floor', undefined, 32, 32);
+        this.tilemap = this.make.tilemap({ tileWidth: 32, tileHeight: 32, width: this.mapWidth, height: this.mapHeight });
+        const tileset = this.tilemap.addTilesetImage('floor', undefined, 32, 32);
         if (tileset) {
-            const floorLayer = map.createBlankLayer('Floor', tileset)?.setDepth(0);
-
-            if (floorLayer) {
+            const layer = this.tilemap.createBlankLayer('Floor', tileset);
+            if (layer) {
+                this.floorLayer = layer.setDepth(0);
                 for (let y = 0; y < this.mapHeight; y++) {
                     for (let x = 0; x < this.mapWidth; x++) {
                         if (grid[y][x] === 1) {
-                            floorLayer.putTileAt(0, x, y);
-                            if (Math.random() > 0.9) floorLayer.getTileAt(x, y).tint = 0xdddddd;
+                            this.floorLayer.putTileAt(0, x, y);
+                            if (Math.random() > 0.9) this.floorLayer.getTileAt(x, y).tint = 0xdddddd;
                         }
                     }
                 }
@@ -413,24 +453,29 @@ class MainScene extends Phaser.Scene {
         }
 
         // 2. Render Walls, Shadows & Torches (Layer 1)
-        this.wallsGroup = this.add.group();
+        // this.wallsGroup is cleared in clearMap and re-used, or we can just add to it.
+        // Since we clear it, we can just add.
 
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
                 if (grid[y][x] === 0) {
                     if (this.hasAdjacentFloor(grid, x, y)) {
-                        this.add.image(x * 32 + 16, y * 32 + 16, 'wall').setDepth(10);
+                        const wall = this.add.image(x * 32 + 16, y * 32 + 16, 'wall').setDepth(10);
+                        this.wallsGroup.add(wall);
 
                         // Shadow
                         if (y + 1 < this.mapHeight && grid[y + 1][x] === 1) {
-                            this.add.image(x * 32 + 16, (y + 1) * 32 + 8, 'shadow').setDepth(5);
+                            const shadow = this.add.image(x * 32 + 16, (y + 1) * 32 + 8, 'shadow').setDepth(5);
+                            this.wallsGroup.add(shadow);
                         }
 
                         // Torch
                         if (Math.random() > 0.95) {
-                            this.add.image(x * 32 + 16, y * 32 + 16, 'torch').setDepth(11);
-                            let light = this.add.circle(x * 32 + 16, y * 32 + 16, 60, 0xFFAA00, 0.1).setDepth(11);
+                            const torch = this.add.image(x * 32 + 16, y * 32 + 16, 'torch').setDepth(11);
+                            const light = this.add.circle(x * 32 + 16, y * 32 + 16, 60, 0xFFAA00, 0.1).setDepth(11);
                             light.setBlendMode(Phaser.BlendModes.ADD);
+                            this.wallsGroup.add(torch);
+                            this.wallsGroup.add(light);
                         }
                     }
                 }
@@ -438,35 +483,46 @@ class MainScene extends Phaser.Scene {
         }
 
         // 3. Render Doors (Layer 2)
-        // We use Sprites for doors so we can animate/rotate them
         for (let d of doors) {
             this.createDoor(d.x, d.y, d.rotation);
         }
 
         // 4. Place Tokens
-        const startRoom = rooms[0];
-        const elfX = (startRoom.center.x * 32) + 16;
-        const elfY = (startRoom.center.y * 32) + 16;
-        // this.elf = this.createToken(elfX, elfY, 'elf', 'Elf'); // Removed initial elf
+        // If we have saved tokens, use them. Otherwise, spawn defaults.
+        if (dungeonData.tokens && dungeonData.tokens.length > 0) {
+            dungeonData.tokens.forEach((t: any) => {
+                // Check if it's a player or monster
+                if (t.type === 'player') {
+                    this.createToken(t.x, t.y, t.image || 'player-default', t.name, t.size || 'medium');
+                } else if (t.type === 'monster') {
+                    if (t.name === 'Ogre') {
+                        this.ogre = this.createToken(t.x, t.y, 'ogre', 'Ogre', 'large');
+                    } else {
+                        this.createToken(t.x, t.y, t.image, t.name, t.size || 'medium');
+                    }
+                }
+            });
+        } else {
+            // Default Spawns (only if no tokens saved)
+            const startRoom = rooms[0];
+            const elfX = (startRoom.center.x * 32) + 16;
+            const elfY = (startRoom.center.y * 32) + 16;
 
-        const endRoom = rooms[rooms.length - 1];
-        // Ogre is Large (2x2), so we need to offset it to align with grid lines
-        // Center of 2x2 area starting at (x,y) is x + 32, y + 32
-        // But our grid logic uses center of tiles.
-        // Let's use the createToken logic which should handle it if we pass size.
-        // For now, manually placing Ogre which is 2x2.
-        // Top-left of room center tile:
-        const ogreX = (endRoom.center.x * 32); // On the grid line
-        const ogreY = (endRoom.center.y * 32); // On the grid line
+            const endRoom = rooms[rooms.length - 1];
+            const ogreX = (endRoom.center.x * 32);
+            const ogreY = (endRoom.center.y * 32);
 
-        // Actually, let's just use the helper
-        this.ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
+            this.ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
+            this.cameras.main.centerOn(elfX, elfY);
 
-        this.cameras.main.centerOn(elfX, elfY);
+            // Save initial state including the Ogre
+            this.saveTokenState();
+        }
     }
 
     createDoor(x: number, y: number, rotation: number) {
         const door = this.add.sprite(x * 32 + 16, y * 32 + 16, 'door');
+        this.doorsGroup.add(door);
         door.setRotation(rotation);
         door.setDepth(15); // Higher than walls, lower than tokens
         door.setInteractive();
@@ -703,5 +759,27 @@ class MainScene extends Phaser.Scene {
         }
 
         return tokens;
+    }
+    clearMap() {
+        // Clear Tilemap
+        if (this.floorLayer) {
+            this.floorLayer.destroy();
+        }
+        if (this.tilemap) {
+            this.tilemap.destroy();
+        }
+
+        // Clear Groups
+        this.wallsGroup.clear(true, true);
+        this.doorsGroup.clear(true, true);
+
+        // Clear Tokens
+        this.playerTokens.forEach(t => t.destroy());
+        this.playerTokens = [];
+
+        if (this.ogre) {
+            this.ogre.destroy();
+            this.ogre = null;
+        }
     }
 }
