@@ -139,7 +139,8 @@ export class PartySidebarComponent {
             event.dataTransfer?.setData('application/json', JSON.stringify({
                 type: 'player-token',
                 name: this.playerCharacter.name,
-                image: this.playerCharacter.image
+                image: this.playerCharacter.image,
+                size: this.playerCharacter.size
             }));
             event.dataTransfer!.effectAllowed = 'copy';
         }

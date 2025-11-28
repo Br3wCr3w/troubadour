@@ -5,4 +5,5 @@ export interface Character {
     maxHp: number;
     ac: number;
     image: string | null;
+    size?: 'medium' | 'large' | 'huge' | 'gargantuan' | 'colossal';
 }

@@ -78,7 +78,9 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
                 // Get the active scene
                 const scene = this.game?.scene.getScene('MainScene') as MainScene;
                 if (scene) {
-                    scene.addPlayerToken(x, y, parsed.image, parsed.name);
+                    // Default to medium if size not provided
+                    const size = parsed.size || 'medium';
+                    scene.addPlayerToken(x, y, parsed.image, parsed.name, size);
                     scene.resetPointer();
                 }
             }
@@ -441,9 +443,17 @@ class MainScene extends Phaser.Scene {
         // this.elf = this.createToken(elfX, elfY, 'elf', 'Elf'); // Removed initial elf
 
         const endRoom = rooms[rooms.length - 1];
-        const ogreX = (endRoom.center.x * 32) + 16;
-        const ogreY = (endRoom.center.y * 32) + 16;
-        this.ogre = this.createToken(ogreX, ogreY, 'ogre', 'Ogre');
+        // Ogre is Large (2x2), so we need to offset it to align with grid lines
+        // Center of 2x2 area starting at (x,y) is x + 32, y + 32
+        // But our grid logic uses center of tiles.
+        // Let's use the createToken logic which should handle it if we pass size.
+        // For now, manually placing Ogre which is 2x2.
+        // Top-left of room center tile:
+        const ogreX = (endRoom.center.x * 32); // On the grid line
+        const ogreY = (endRoom.center.y * 32); // On the grid line
+
+        // Actually, let's just use the helper
+        this.ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
 
         this.cameras.main.centerOn(elfX, elfY);
     }
@@ -499,9 +509,27 @@ class MainScene extends Phaser.Scene {
         return false;
     }
 
-    createToken(x: number, y: number, texture: string, name: string) {
+    getSizeInTiles(size: string): number {
+        switch (size) {
+            case 'medium': return 1;
+            case 'large': return 2;
+            case 'huge': return 3;
+            case 'gargantuan': return 4;
+            case 'colossal': return 5;
+            default: return 1;
+        }
+    }
+
+    getSnappingOffset(sizeInTiles: number): number {
+        // If size is odd (1, 3, 5), center is in middle of tile (+16)
+        // If size is even (2, 4), center is on grid line (multiple of 32)
+        return sizeInTiles % 2 === 1 ? 16 : 0;
+    }
+
+    createToken(x: number, y: number, texture: string, name: string, size: string = 'medium') {
         const token = this.add.sprite(x, y, texture).setInteractive();
         token.setData('name', name);
+        token.setData('size', size);
         token.setDepth(20);
 
         // Dragging Logic
@@ -525,8 +553,15 @@ class MainScene extends Phaser.Scene {
 
         token.on('dragend', () => {
             this.isDragging = false;
-            token.x = Math.floor(token.x / 32) * 32 + 16;
-            token.y = Math.floor(token.y / 32) * 32 + 16;
+
+            const sizeInTiles = this.getSizeInTiles(token.getData('size'));
+            const offset = this.getSnappingOffset(sizeInTiles);
+
+            // Snap to grid
+            // We want the center to be at (N * 32) + offset
+            token.x = Math.floor((token.x - offset) / 32 + 0.5) * 32 + offset;
+            token.y = Math.floor((token.y - offset) / 32 + 0.5) * 32 + offset;
+
             if (this.selectedToken === token) {
                 this.selectionRing.setPosition(token.x, token.y);
             }
@@ -535,11 +570,16 @@ class MainScene extends Phaser.Scene {
         return token;
     }
 
-    addPlayerToken(x: number, y: number, imageUrl: string, name: string) {
+    addPlayerToken(x: number, y: number, imageUrl: string, name: string, size: string = 'medium') {
+        const sizeInTiles = this.getSizeInTiles(size);
+        const offset = this.getSnappingOffset(sizeInTiles);
+
         // Convert screen coordinates to world coordinates
         const worldPoint = this.cameras.main.getWorldPoint(x, y);
-        const gridX = Math.floor(worldPoint.x / 32) * 32 + 16;
-        const gridY = Math.floor(worldPoint.y / 32) * 32 + 16;
+
+        // Snap to grid based on size
+        const gridX = Math.floor((worldPoint.x - offset) / 32 + 0.5) * 32 + offset;
+        const gridY = Math.floor((worldPoint.y - offset) / 32 + 0.5) * 32 + offset;
 
         const key = `player-${name}`;
 
@@ -556,24 +596,29 @@ class MainScene extends Phaser.Scene {
                 this.playerTokens.splice(existingTokenIndex, 1);
             }
 
-            const token = this.createToken(gridX, gridY, key, name);
+            const token = this.createToken(gridX, gridY, key, name, size);
             this.playerTokens.push(token);
 
-            // Scale token to fit tile if needed
-            token.setDisplaySize(32, 32);
-            // Make it circular using a mask
-            const maskShape = this.make.graphics({}).fillCircle(gridX, gridY, 16);
+            // Scale token to fit size
+            const pixelSize = sizeInTiles * 32;
+            token.setDisplaySize(pixelSize, pixelSize);
+
+            // Make it circular using a mask (if it's a player token, usually round)
+            // For larger tokens, maybe we want a rounded rect or just a larger circle?
+            // Let's stick to circle for now, scaled up.
+            const radius = pixelSize / 2;
+            const maskShape = this.make.graphics({}).fillCircle(gridX, gridY, radius);
             const mask = maskShape.createGeometryMask();
             token.setMask(mask);
 
             // We need to update the mask position when dragging
             token.on('drag', () => {
                 maskShape.clear();
-                maskShape.fillCircle(token.x, token.y, 16);
+                maskShape.fillCircle(token.x, token.y, radius);
             });
             token.on('dragend', () => {
                 maskShape.clear();
-                maskShape.fillCircle(token.x, token.y, 16);
+                maskShape.fillCircle(token.x, token.y, radius);
             });
         };
 
@@ -600,11 +645,13 @@ class MainScene extends Phaser.Scene {
         this.selectionRing.setVisible(true);
         this.selectionRing.setPosition(token.x, token.y);
 
-        if (token.texture.key === 'ogre') {
-            this.selectionRing.setScale(2.2);
-        } else {
-            this.selectionRing.setScale(1.2);
-        }
+        const size = token.getData('size') || 'medium';
+        const sizeInTiles = this.getSizeInTiles(size);
+        const pixelSize = sizeInTiles * 32;
+
+        // Scale ring to be slightly larger than the token
+        const scale = (pixelSize / 32) * 1.2;
+        this.selectionRing.setScale(scale);
     }
 
     handleCameraPan(pointer: Phaser.Input.Pointer) {
