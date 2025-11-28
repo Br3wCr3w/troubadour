@@ -255,6 +255,10 @@ class MainScene extends Phaser.Scene {
     private playerTokens: Phaser.GameObjects.Sprite[] = [];
     private lastMapCreatedAt: number = 0;
 
+    // Visibility System
+    private objectMap: any[][] = []; // Stores { walls: [], floor: [], doors: [], etc } at each x,y
+    private visibleTiles: boolean[][] = [];
+
     constructor(private mapService: MapService) {
         super({ key: 'MainScene' });
     }
@@ -404,6 +408,16 @@ class MainScene extends Phaser.Scene {
 
         this.wallsGroup = this.add.group();
         this.doorsGroup = this.add.group();
+
+        // Initialize object map
+        this.objectMap = Array(this.mapHeight).fill(null).map(() => Array(this.mapWidth).fill(null).map(() => ({
+            walls: [],
+            floor: null,
+            door: null,
+            shadows: [],
+            torches: []
+        })));
+        this.visibleTiles = Array(this.mapHeight).fill(false).map(() => Array(this.mapWidth).fill(false));
     }
 
     generateNewMap() {
@@ -442,6 +456,15 @@ class MainScene extends Phaser.Scene {
     renderStaticMap(dungeonData: MapData) {
         this.clearStaticMap();
 
+        // Reset object map
+        this.objectMap = Array(this.mapHeight).fill(null).map(() => Array(this.mapWidth).fill(null).map(() => ({
+            walls: [],
+            floor: null,
+            door: null,
+            shadows: [],
+            torches: []
+        })));
+
         const rooms = dungeonData.rooms;
         const grid = dungeonData.grid;
         const doors = dungeonData.doors;
@@ -456,8 +479,9 @@ class MainScene extends Phaser.Scene {
                 for (let y = 0; y < this.mapHeight; y++) {
                     for (let x = 0; x < this.mapWidth; x++) {
                         if (grid[y][x] === 1) {
-                            this.floorLayer.putTileAt(0, x, y);
-                            if (Math.random() > 0.9) this.floorLayer.getTileAt(x, y).tint = 0xdddddd;
+                            const tile = this.floorLayer.putTileAt(0, x, y);
+                            if (Math.random() > 0.9) tile.tint = 0xdddddd;
+                            this.objectMap[y][x].floor = tile;
                         }
                     }
                 }
@@ -471,11 +495,14 @@ class MainScene extends Phaser.Scene {
                     if (this.hasAdjacentFloor(grid, x, y)) {
                         const wall = this.add.image(x * 32 + 16, y * 32 + 16, 'wall').setDepth(10);
                         this.wallsGroup.add(wall);
+                        this.objectMap[y][x].walls.push(wall);
 
                         // Shadow
                         if (y + 1 < this.mapHeight && grid[y + 1][x] === 1) {
                             const shadow = this.add.image(x * 32 + 16, (y + 1) * 32 + 8, 'shadow').setDepth(5);
                             this.wallsGroup.add(shadow);
+                            // Add shadow to the floor tile below it for visibility toggling
+                            this.objectMap[y + 1][x].shadows.push(shadow);
                         }
 
                         // Torch
@@ -485,6 +512,8 @@ class MainScene extends Phaser.Scene {
                             light.setBlendMode(Phaser.BlendModes.ADD);
                             this.wallsGroup.add(torch);
                             this.wallsGroup.add(light);
+                            this.objectMap[y][x].torches.push(torch);
+                            this.objectMap[y][x].torches.push(light);
                         }
                     }
                 }
@@ -538,7 +567,11 @@ class MainScene extends Phaser.Scene {
                 this.saveTokenState();
             }
         }
+
+        // Recalculate visibility after placing tokens
+        this.calculateVisibility();
     }
+
 
     createDoor(x: number, y: number, rotation: number) {
         const door = this.add.sprite(x * 32 + 16, y * 32 + 16, 'door');
@@ -546,6 +579,9 @@ class MainScene extends Phaser.Scene {
         door.setRotation(rotation);
         door.setDepth(15); // Higher than walls, lower than tokens
         door.setInteractive();
+
+        // Register door in object map
+        this.objectMap[y][x].door = door;
 
         // State
         door.setData('isOpen', false);
@@ -564,6 +600,7 @@ class MainScene extends Phaser.Scene {
                     duration: 200
                 });
                 door.setData('isOpen', true);
+                this.calculateVisibility();
             } else {
                 // Close: Return to base state
                 this.tweens.add({
@@ -573,6 +610,7 @@ class MainScene extends Phaser.Scene {
                     duration: 200
                 });
                 door.setData('isOpen', false);
+                this.calculateVisibility();
             }
         });
     }
@@ -718,6 +756,9 @@ class MainScene extends Phaser.Scene {
 
             // Save state after move
             this.saveTokenState();
+
+            // Update visibility
+            this.calculateVisibility();
         });
 
         return token;
@@ -825,5 +866,112 @@ class MainScene extends Phaser.Scene {
     clearMap() {
         this.clearStaticMap();
         this.clearTokens();
+    }
+
+    calculateVisibility() {
+        // 1. Reset visibility
+        this.visibleTiles = Array(this.mapHeight).fill(false).map(() => Array(this.mapWidth).fill(false));
+
+        // 2. BFS from each player token
+        const queue: { x: number, y: number }[] = [];
+        const visited = new Set<string>();
+
+        this.playerTokens.forEach(token => {
+            // Convert world coords to grid coords
+            const gx = Math.floor(token.x / 32);
+            const gy = Math.floor(token.y / 32);
+
+            if (gx >= 0 && gx < this.mapWidth && gy >= 0 && gy < this.mapHeight) {
+                queue.push({ x: gx, y: gy });
+                visited.add(`${gx},${gy}`);
+                this.visibleTiles[gy][gx] = true;
+            }
+        });
+
+        while (queue.length > 0) {
+            const { x, y } = queue.shift()!;
+
+            // Check neighbors
+            const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+            for (let d of dirs) {
+                const nx = x + d[0];
+                const ny = y + d[1];
+
+                if (nx >= 0 && nx < this.mapWidth && ny >= 0 && ny < this.mapHeight) {
+                    const key = `${nx},${ny}`;
+                    if (!visited.has(key)) {
+                        // Logic:
+                        // If current tile is a WALL or CLOSED DOOR, we can see it, but cannot see PAST it.
+                        // If current tile is FLOOR or OPEN DOOR, we can see it AND see past it.
+
+                        // However, we are processing the NEIGHBOR (nx, ny) from (x, y).
+                        // So if (x,y) allows light to pass, we can see (nx, ny).
+
+                        // Check if the source tile (x,y) blocks vision
+                        let blocksVision = false;
+                        const cell = this.objectMap[y][x];
+
+                        // Walls block vision
+                        if (cell.walls.length > 0) blocksVision = true;
+
+                        // Closed doors block vision
+                        if (cell.door && !cell.door.getData('isOpen')) blocksVision = true;
+
+                        // If source doesn't block vision, we can see the neighbor
+                        if (!blocksVision) {
+                            this.visibleTiles[ny][nx] = true;
+                            visited.add(key);
+
+                            // Determine if we should continue propagating FROM the neighbor
+                            // We propagate if the neighbor itself doesn't block vision
+
+                            const neighborCell = this.objectMap[ny][nx];
+                            let neighborIsBlocker = false;
+                            if (neighborCell.walls.length > 0) neighborIsBlocker = true;
+                            if (neighborCell.door && !neighborCell.door.getData('isOpen')) neighborIsBlocker = true;
+
+                            if (!neighborIsBlocker) {
+                                queue.push({ x: nx, y: ny });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Apply visibility to scene objects
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const isVisible = this.visibleTiles[y][x];
+                const alpha = isVisible ? 1 : 0;
+
+                const cell = this.objectMap[y][x];
+
+                // Floor
+                if (cell.floor) cell.floor.alpha = alpha;
+
+                // Walls
+                cell.walls.forEach((w: any) => w.setAlpha(alpha));
+
+                // Shadows
+                cell.shadows.forEach((s: any) => s.setAlpha(alpha));
+
+                // Torches
+                cell.torches.forEach((t: any) => t.setAlpha(alpha));
+
+                // Door
+                if (cell.door) cell.door.setAlpha(isVisible ? (cell.door.getData('isOpen') ? 0.5 : 1) : 0);
+            }
+        }
+
+        // 4. Hide/Show Monsters based on tile visibility
+        this.monsterTokens.forEach(token => {
+            const gx = Math.floor(token.x / 32);
+            const gy = Math.floor(token.y / 32);
+            if (gx >= 0 && gx < this.mapWidth && gy >= 0 && gy < this.mapHeight) {
+                token.setVisible(this.visibleTiles[gy][gx]);
+            }
+        });
     }
 }
