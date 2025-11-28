@@ -250,9 +250,10 @@ class MainScene extends Phaser.Scene {
     private tilemap!: Phaser.Tilemaps.Tilemap;
     private floorLayer!: Phaser.Tilemaps.TilemapLayer;
     // private elf!: Phaser.GameObjects.Sprite; // Removed
-    private ogre!: Phaser.GameObjects.Sprite | null;
+    private monsterTokens: Phaser.GameObjects.Sprite[] = [];
     private isDragging = false;
     private playerTokens: Phaser.GameObjects.Sprite[] = [];
+    private lastMapCreatedAt: number = 0;
 
     constructor(private mapService: MapService) {
         super({ key: 'MainScene' });
@@ -428,7 +429,18 @@ class MainScene extends Phaser.Scene {
     }
 
     renderMap(dungeonData: MapData) {
-        this.clearMap();
+        // Only re-render static elements if the map has actually changed (new generation)
+        if (this.lastMapCreatedAt !== dungeonData.createdAt) {
+            this.renderStaticMap(dungeonData);
+            this.lastMapCreatedAt = dungeonData.createdAt;
+        }
+
+        // Always render tokens as they might have moved
+        this.renderTokens(dungeonData);
+    }
+
+    renderStaticMap(dungeonData: MapData) {
+        this.clearStaticMap();
 
         const rooms = dungeonData.rooms;
         const grid = dungeonData.grid;
@@ -453,9 +465,6 @@ class MainScene extends Phaser.Scene {
         }
 
         // 2. Render Walls, Shadows & Torches (Layer 1)
-        // this.wallsGroup is cleared in clearMap and re-used, or we can just add to it.
-        // Since we clear it, we can just add.
-
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
                 if (grid[y][x] === 0) {
@@ -486,6 +495,10 @@ class MainScene extends Phaser.Scene {
         for (let d of doors) {
             this.createDoor(d.x, d.y, d.rotation);
         }
+    }
+
+    renderTokens(dungeonData: MapData) {
+        this.clearTokens();
 
         // 4. Place Tokens
         // If we have saved tokens, use them. Otherwise, spawn defaults.
@@ -493,30 +506,37 @@ class MainScene extends Phaser.Scene {
             dungeonData.tokens.forEach((t: any) => {
                 // Check if it's a player or monster
                 if (t.type === 'player') {
-                    this.createToken(t.x, t.y, t.image || 'player-default', t.name, t.size || 'medium');
+                    // Use spawnPlayerToken to handle dynamic image loading and masking
+                    // Pass false to shouldSave to avoid infinite loops during render
+                    this.spawnPlayerToken(t.x, t.y, t.image, t.name, t.size || 'medium', false);
                 } else if (t.type === 'monster') {
-                    if (t.name === 'Ogre') {
-                        this.ogre = this.createToken(t.x, t.y, 'ogre', 'Ogre', 'large');
-                    } else {
-                        this.createToken(t.x, t.y, t.image, t.name, t.size || 'medium');
-                    }
+                    const token = this.createToken(t.x, t.y, t.image || 'ogre', t.name, t.size || 'medium');
+                    // Store original image for persistence if needed, though for monsters we might just use key
+                    token.setData('imageUrl', t.image);
+                    this.monsterTokens.push(token);
                 }
             });
         } else {
             // Default Spawns (only if no tokens saved)
-            const startRoom = rooms[0];
-            const elfX = (startRoom.center.x * 32) + 16;
-            const elfY = (startRoom.center.y * 32) + 16;
+            // We need rooms for default spawn, but rooms are in dungeonData
+            // If this is a fresh map, we should have rooms.
+            if (dungeonData.rooms && dungeonData.rooms.length > 0) {
+                const startRoom = dungeonData.rooms[0];
+                const elfX = (startRoom.center.x * 32) + 16;
+                const elfY = (startRoom.center.y * 32) + 16;
 
-            const endRoom = rooms[rooms.length - 1];
-            const ogreX = (endRoom.center.x * 32);
-            const ogreY = (endRoom.center.y * 32);
+                const endRoom = dungeonData.rooms[dungeonData.rooms.length - 1];
+                const ogreX = (endRoom.center.x * 32);
+                const ogreY = (endRoom.center.y * 32);
 
-            this.ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
-            this.cameras.main.centerOn(elfX, elfY);
+                const ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
+                this.monsterTokens.push(ogre);
 
-            // Save initial state including the Ogre
-            this.saveTokenState();
+                this.cameras.main.centerOn(elfX, elfY);
+
+                // Save initial state including the Ogre
+                this.saveTokenState();
+            }
         }
     }
 
@@ -589,6 +609,73 @@ class MainScene extends Phaser.Scene {
         return sizeInTiles % 2 === 1 ? 16 : 0;
     }
 
+    private spawnPlayerToken(worldX: number, worldY: number, imageUrl: string, name: string, size: string, shouldSave: boolean = true) {
+        const sizeInTiles = this.getSizeInTiles(size);
+        const offset = this.getSnappingOffset(sizeInTiles);
+
+        // Snap to grid based on size
+        const gridX = Math.floor((worldX - offset) / 32 + 0.5) * 32 + offset;
+        const gridY = Math.floor((worldY - offset) / 32 + 0.5) * 32 + offset;
+
+        const key = `player-${name}`;
+
+        const createAndTrackToken = () => {
+            // Check for existing token
+            const existingTokenIndex = this.playerTokens.findIndex(t => t.getData('name') === name);
+            if (existingTokenIndex !== -1) {
+                const oldToken = this.playerTokens[existingTokenIndex];
+                if (this.selectedToken === oldToken) {
+                    this.selectedToken = null;
+                    this.selectionRing.setVisible(false);
+                }
+                oldToken.destroy();
+                this.playerTokens.splice(existingTokenIndex, 1);
+            }
+
+            const token = this.createToken(gridX, gridY, key, name, size);
+            // Store the original image URL for persistence
+            token.setData('imageUrl', imageUrl);
+            this.playerTokens.push(token);
+
+            // Scale token to fit size
+            const pixelSize = sizeInTiles * 32;
+            token.setDisplaySize(pixelSize, pixelSize);
+
+            // Make it circular using a mask
+            const radius = pixelSize / 2;
+            const maskShape = this.make.graphics({}).fillCircle(gridX, gridY, radius);
+            const mask = maskShape.createGeometryMask();
+            token.setMask(mask);
+
+            // We need to update the mask position when dragging
+            token.on('drag', () => {
+                maskShape.clear();
+                maskShape.fillCircle(token.x, token.y, radius);
+            });
+            token.on('dragend', () => {
+                maskShape.clear();
+                maskShape.fillCircle(token.x, token.y, radius);
+            });
+
+            // Save state after spawning only if requested
+            if (shouldSave) {
+                this.saveTokenState();
+            }
+        };
+
+        // If texture exists, create token immediately
+        if (this.textures.exists(key)) {
+            createAndTrackToken();
+        } else {
+            // Load texture dynamically
+            this.load.image(key, imageUrl);
+            this.load.once('complete', () => {
+                createAndTrackToken();
+            });
+            this.load.start();
+        }
+    }
+
     createToken(x: number, y: number, texture: string, name: string, size: string = 'medium') {
         const token = this.add.sprite(x, y, texture).setInteractive();
         token.setData('name', name);
@@ -628,74 +715,18 @@ class MainScene extends Phaser.Scene {
             if (this.selectedToken === token) {
                 this.selectionRing.setPosition(token.x, token.y);
             }
+
+            // Save state after move
+            this.saveTokenState();
         });
 
         return token;
     }
 
     addPlayerToken(x: number, y: number, imageUrl: string, name: string, size: string = 'medium') {
-        const sizeInTiles = this.getSizeInTiles(size);
-        const offset = this.getSnappingOffset(sizeInTiles);
-
         // Convert screen coordinates to world coordinates
         const worldPoint = this.cameras.main.getWorldPoint(x, y);
-
-        // Snap to grid based on size
-        const gridX = Math.floor((worldPoint.x - offset) / 32 + 0.5) * 32 + offset;
-        const gridY = Math.floor((worldPoint.y - offset) / 32 + 0.5) * 32 + offset;
-
-        const key = `player-${name}`;
-
-        const createAndTrackToken = () => {
-            // Check for existing token
-            const existingTokenIndex = this.playerTokens.findIndex(t => t.getData('name') === name);
-            if (existingTokenIndex !== -1) {
-                const oldToken = this.playerTokens[existingTokenIndex];
-                if (this.selectedToken === oldToken) {
-                    this.selectedToken = null;
-                    this.selectionRing.setVisible(false);
-                }
-                oldToken.destroy();
-                this.playerTokens.splice(existingTokenIndex, 1);
-            }
-
-            const token = this.createToken(gridX, gridY, key, name, size);
-            this.playerTokens.push(token);
-
-            // Scale token to fit size
-            const pixelSize = sizeInTiles * 32;
-            token.setDisplaySize(pixelSize, pixelSize);
-
-            // Make it circular using a mask (if it's a player token, usually round)
-            // For larger tokens, maybe we want a rounded rect or just a larger circle?
-            // Let's stick to circle for now, scaled up.
-            const radius = pixelSize / 2;
-            const maskShape = this.make.graphics({}).fillCircle(gridX, gridY, radius);
-            const mask = maskShape.createGeometryMask();
-            token.setMask(mask);
-
-            // We need to update the mask position when dragging
-            token.on('drag', () => {
-                maskShape.clear();
-                maskShape.fillCircle(token.x, token.y, radius);
-            });
-            token.on('dragend', () => {
-                maskShape.clear();
-                maskShape.fillCircle(token.x, token.y, radius);
-            });
-        };
-
-        // If texture exists, create token immediately
-        if (this.textures.exists(key)) {
-            createAndTrackToken();
-        } else {
-            // Load texture dynamically
-            this.load.image(key, imageUrl);
-            this.load.once('complete', () => {
-                createAndTrackToken();
-            });
-            this.load.start();
-        }
+        this.spawnPlayerToken(worldPoint.x, worldPoint.y, imageUrl, name, size, true);
     }
 
     resetPointer() {
@@ -733,6 +764,7 @@ class MainScene extends Phaser.Scene {
             cam.zoom = Math.min(2, cam.zoom + 0.1);
         }
     }
+
     public getEncounterTokens(): any[] {
         const tokens: any[] = [];
 
@@ -740,27 +772,34 @@ class MainScene extends Phaser.Scene {
         this.playerTokens.forEach(t => {
             tokens.push({
                 name: t.getData('name'),
-                image: t.texture.key.startsWith('player-') ? t.texture.key : null,
+                image: t.getData('imageUrl'), // Use the stored original URL
                 id: t.getData('name'),
                 type: 'player',
-                tokenId: t.getData('name')
+                tokenId: t.getData('name'),
+                x: t.x,
+                y: t.y,
+                size: t.getData('size')
             });
         });
 
-        // Ogre (and other monsters)
-        if (this.ogre) {
+        // Monster Tokens
+        this.monsterTokens.forEach(t => {
             tokens.push({
-                name: 'Ogre',
-                image: null,
-                id: 'ogre-1',
+                name: t.getData('name'),
+                image: t.getData('imageUrl') || (t.texture.key === 'ogre' ? null : t.texture.key),
+                id: t.getData('name'), // Unique ID might be needed if multiple same monsters
                 type: 'monster',
-                tokenId: 'ogre-1'
+                tokenId: t.getData('name'),
+                x: t.x,
+                y: t.y,
+                size: t.getData('size')
             });
-        }
+        });
 
         return tokens;
     }
-    clearMap() {
+
+    clearStaticMap() {
         // Clear Tilemap
         if (this.floorLayer) {
             this.floorLayer.destroy();
@@ -772,14 +811,19 @@ class MainScene extends Phaser.Scene {
         // Clear Groups
         this.wallsGroup.clear(true, true);
         this.doorsGroup.clear(true, true);
+    }
 
+    clearTokens() {
         // Clear Tokens
         this.playerTokens.forEach(t => t.destroy());
         this.playerTokens = [];
 
-        if (this.ogre) {
-            this.ogre.destroy();
-            this.ogre = null;
-        }
+        this.monsterTokens.forEach(t => t.destroy());
+        this.monsterTokens = [];
+    }
+
+    clearMap() {
+        this.clearStaticMap();
+        this.clearTokens();
     }
 }
