@@ -105,4 +105,12 @@ export class MapService {
             console.error('Error updating tokens:', error);
         }
     }
+
+    async updateDoors(doors: any[]) {
+        try {
+            await setDoc(this.mapDocRef, { doors }, { merge: true });
+        } catch (error) {
+            console.error('Error updating doors:', error);
+        }
+    }
 }

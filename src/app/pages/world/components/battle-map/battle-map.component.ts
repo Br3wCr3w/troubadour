@@ -200,11 +200,11 @@ class DungeonGenerator {
 
         // Horizontal Door: Walls above and below, Floors left and right
         if (top === 0 && bottom === 0 && left === 1 && right === 1) {
-            this.doors.push({ x, y, rotation: 0 }); // 0 rads = horizontal sprite
+            this.doors.push({ x, y, rotation: 0, isOpen: false }); // 0 rads = horizontal sprite
         }
         // Vertical Door: Walls left and right, Floors top and bottom
         else if (left === 0 && right === 0 && top === 1 && bottom === 1) {
-            this.doors.push({ x, y, rotation: Math.PI / 2 }); // 90 degrees
+            this.doors.push({ x, y, rotation: Math.PI / 2, isOpen: false }); // 90 degrees
         }
     }
 
@@ -442,6 +442,22 @@ class MainScene extends Phaser.Scene {
         this.mapService.updateTokens(tokens);
     }
 
+    saveDoorState() {
+        const doors: any[] = [];
+        this.doorsGroup.getChildren().forEach((d: any) => {
+            // Find grid position
+            const x = Math.floor((d.x - 16) / 32);
+            const y = Math.floor((d.y - 16) / 32);
+            doors.push({
+                x,
+                y,
+                rotation: d.getData('baseRotation'),
+                isOpen: d.getData('isOpen')
+            });
+        });
+        this.mapService.updateDoors(doors);
+    }
+
     renderMap(dungeonData: MapData) {
         // Only re-render static elements if the map has actually changed (new generation)
         if (this.lastMapCreatedAt !== dungeonData.createdAt) {
@@ -522,7 +538,7 @@ class MainScene extends Phaser.Scene {
 
         // 3. Render Doors (Layer 2)
         for (let d of doors) {
-            this.createDoor(d.x, d.y, d.rotation);
+            this.createDoor(d.x, d.y, d.rotation, d.isOpen);
         }
     }
 
@@ -573,7 +589,7 @@ class MainScene extends Phaser.Scene {
     }
 
 
-    createDoor(x: number, y: number, rotation: number) {
+    createDoor(x: number, y: number, rotation: number, isOpen: boolean = false) {
         const door = this.add.sprite(x * 32 + 16, y * 32 + 16, 'door');
         this.doorsGroup.add(door);
         door.setRotation(rotation);
@@ -584,14 +600,20 @@ class MainScene extends Phaser.Scene {
         this.objectMap[y][x].door = door;
 
         // State
-        door.setData('isOpen', false);
+        door.setData('isOpen', isOpen);
         door.setData('baseRotation', rotation);
 
+        // Initial visual state
+        if (isOpen) {
+            door.setRotation(rotation + (Math.PI / 2));
+            door.setAlpha(0.5);
+        }
+
         door.on('pointerdown', () => {
-            const isOpen = door.getData('isOpen');
+            const currentIsOpen = door.getData('isOpen');
             const baseRot = door.getData('baseRotation');
 
-            if (!isOpen) {
+            if (!currentIsOpen) {
                 // Open: Rotate 90 degrees more and fade slightly
                 this.tweens.add({
                     targets: door,
@@ -601,6 +623,7 @@ class MainScene extends Phaser.Scene {
                 });
                 door.setData('isOpen', true);
                 this.calculateVisibility();
+                this.saveDoorState();
             } else {
                 // Close: Return to base state
                 this.tweens.add({
@@ -611,6 +634,7 @@ class MainScene extends Phaser.Scene {
                 });
                 door.setData('isOpen', false);
                 this.calculateVisibility();
+                this.saveDoorState();
             }
         });
     }
