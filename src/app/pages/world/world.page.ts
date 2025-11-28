@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ViewChild } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Auth, user } from '@angular/fire/auth';
@@ -12,13 +12,15 @@ import { PartySidebarComponent } from './components/party-sidebar/party-sidebar.
 import { GameActionsComponent } from './components/game-actions/game-actions.component';
 import { PlayerEditPopupComponent } from './components/player-edit-popup/player-edit-popup.component';
 import { BattleMapComponent } from './components/battle-map/battle-map.component';
+import { EncounterTrackerComponent } from './components/encounter-tracker/encounter-tracker.component';
+import { EncounterService } from '../../services/encounter.service';
 import { UserProfile } from '../../core/models/user.model';
 import { Character } from '../../core/models/character.model';
 
 @Component({
   selector: 'app-world',
   standalone: true,
-  imports: [CommonModule, FormsModule, ChatComponent, PartySidebarComponent, GameActionsComponent, PlayerEditPopupComponent, BattleMapComponent],
+  imports: [CommonModule, FormsModule, ChatComponent, PartySidebarComponent, GameActionsComponent, PlayerEditPopupComponent, BattleMapComponent, EncounterTrackerComponent],
   templateUrl: './world.page.html',
   styleUrls: ['./world.page.css']
 })
@@ -27,7 +29,10 @@ export class WorldPage implements OnInit, OnDestroy {
   private chatService = inject(ChatService);
   private userService = inject(UserService);
   private characterService = inject(CharacterService);
+  private encounterService = inject(EncounterService);
   private auth = inject(Auth);
+
+  @ViewChild(BattleMapComponent) battleMap!: BattleMapComponent;
 
   user$ = user(this.auth);
   chatMessages$: Observable<ChatMessage[]>;
@@ -131,5 +136,25 @@ export class WorldPage implements OnInit, OnDestroy {
         console.error('Failed to save character:', error);
       }
     }
+  }
+  async onStartEncounter() {
+    const tokens = this.battleMap.getEncounterTokens();
+    if (tokens.length === 0) {
+      alert('No tokens on the map!');
+      return;
+    }
+
+    const combatants = tokens.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      initiative: Math.floor(Math.random() * 20) + 1, // Random initiative for now
+      hp: 100, // Default HP
+      maxHp: 100,
+      image: null, // We need to pass the image URL properly
+      type: t.type,
+      tokenId: t.tokenId
+    }));
+
+    await this.encounterService.createEncounter(combatants);
   }
 }

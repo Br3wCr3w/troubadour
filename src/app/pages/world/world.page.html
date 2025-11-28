@@ -1,19 +1,22 @@
 <div class="game-container">
-    <app-battle-map></app-battle-map>
+    <app-battle-map class="battle-map"></app-battle-map>
 
-    <!-- Left Sidebar: Party -->
-    <app-party-sidebar [party]="(party$ | async) || []" [playerCharacter]="playerCharacter"
+    <app-party-sidebar class="party-sidebar" [party]="party$ | async" [playerCharacter]="playerCharacter"
         (openPlayerPopup)="openPlayerPopup()">
     </app-party-sidebar>
 
-    <!-- Bottom Left: Chat -->
-    <app-chat [chatMessages$]="chatMessages$" [chatError]="chatError" (sendMessage)="onSendMessage($event)">
+    <div class="top-bar" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100;">
+        <button class="start-encounter-btn" (click)="onStartEncounter()">⚔️ Start Encounter</button>
+    </div>
+
+    <app-encounter-tracker></app-encounter-tracker>
+
+    <app-chat class="chat-panel" [chatMessages$]="chatMessages$" [chatError]="chatError"
+        (sendMessage)="onSendMessage($event)">
     </app-chat>
 
-    <!-- Bottom Right: Actions -->
-    <app-game-actions></app-game-actions>
+    <app-game-actions class="action-panel"></app-game-actions>
 
-    <!-- Player Stats Popup -->
     <app-player-edit-popup *ngIf="showPlayerPopup" [playerCharacter]="playerCharacter"
         (save)="onSavePlayerStats($event)" (cancel)="closePlayerPopup()">
     </app-player-edit-popup>

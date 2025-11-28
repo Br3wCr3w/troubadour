@@ -86,6 +86,13 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
             }
         }
     }
+    public getEncounterTokens(): any[] {
+        const scene = this.game?.scene.getScene('MainScene') as MainScene;
+        if (scene) {
+            return scene.getEncounterTokens();
+        }
+        return [];
+    }
 }
 
 /**
@@ -669,5 +676,32 @@ class MainScene extends Phaser.Scene {
         } else {
             cam.zoom = Math.min(2, cam.zoom + 0.1);
         }
+    }
+    public getEncounterTokens(): any[] {
+        const tokens: any[] = [];
+
+        // Player Tokens
+        this.playerTokens.forEach(t => {
+            tokens.push({
+                name: t.getData('name'),
+                image: t.texture.key.startsWith('player-') ? t.texture.key : null,
+                id: t.getData('name'),
+                type: 'player',
+                tokenId: t.getData('name')
+            });
+        });
+
+        // Ogre (and other monsters)
+        if (this.ogre) {
+            tokens.push({
+                name: 'Ogre',
+                image: null,
+                id: 'ogre-1',
+                type: 'monster',
+                tokenId: 'ogre-1'
+            });
+        }
+
+        return tokens;
     }
 }
