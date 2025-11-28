@@ -9,7 +9,7 @@ import { UserProfile } from '../../../../core/models/user.model';
     template: `
     <div class="party-sidebar">
         <!-- Logged In User -->
-        <div class="character-card player-card" (click)="onOpenPlayerPopup()">
+        <div class="character-card player-card" (click)="onOpenPlayerPopup()" draggable="true" (dragstart)="onDragStart($event)">
             <div class="char-avatar" [style.background-color]="'#444'">
                 <img *ngIf="playerCharacter.image" [src]="playerCharacter.image" class="avatar-img" alt="Player Avatar">
                 <span *ngIf="!playerCharacter.image" class="char-initial">{{playerCharacter.name[0]}}</span>
@@ -132,6 +132,17 @@ export class PartySidebarComponent {
 
     onOpenPlayerPopup() {
         this.openPlayerPopup.emit();
+    }
+
+    onDragStart(event: DragEvent) {
+        if (this.playerCharacter) {
+            event.dataTransfer?.setData('application/json', JSON.stringify({
+                type: 'player-token',
+                name: this.playerCharacter.name,
+                image: this.playerCharacter.image
+            }));
+            event.dataTransfer!.effectAllowed = 'copy';
+        }
     }
 
     getUserColor(name: string): string {

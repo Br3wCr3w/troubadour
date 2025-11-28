@@ -7,7 +7,7 @@ import Phaser from 'phaser';
     standalone: true,
     imports: [CommonModule],
     template: `
-    <div #gameContainer class="game-container"></div>
+    <div #gameContainer class="game-container" (dragover)="onDragOver($event)" (drop)="onDrop($event)"></div>
   `,
     styles: [`
     :host {
@@ -59,6 +59,30 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
         };
 
         this.game = new Phaser.Game(config);
+    }
+    onDragOver(event: DragEvent) {
+        event.preventDefault();
+        event.dataTransfer!.dropEffect = 'copy';
+    }
+
+    onDrop(event: DragEvent) {
+        event.preventDefault();
+        const data = event.dataTransfer?.getData('application/json');
+        if (data) {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'player-token') {
+                const rect = this.gameContainer.nativeElement.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Get the active scene
+                const scene = this.game?.scene.getScene('MainScene') as MainScene;
+                if (scene) {
+                    scene.addPlayerToken(x, y, parsed.image, parsed.name);
+                    scene.resetPointer();
+                }
+            }
+        }
     }
 }
 
@@ -203,9 +227,10 @@ class MainScene extends Phaser.Scene {
     private selectedToken: Phaser.GameObjects.Container | Phaser.GameObjects.Sprite | null = null;
     private selectionRing!: Phaser.GameObjects.Image;
     private wallsGroup!: Phaser.GameObjects.Group;
-    private elf!: Phaser.GameObjects.Sprite;
+    // private elf!: Phaser.GameObjects.Sprite; // Removed
     private ogre!: Phaser.GameObjects.Sprite;
     private isDragging = false;
+    private playerTokens: Phaser.GameObjects.Sprite[] = [];
 
     constructor() {
         super({ key: 'MainScene' });
@@ -257,7 +282,8 @@ class MainScene extends Phaser.Scene {
         shadowG.destroy();
 
         // --- 4. Entities (Elf & Ogre) ---
-        // Elf
+        // Elf - REMOVED
+        /*
         const elfG = this.make.graphics({ x: 0, y: 0 });
         elfG.fillStyle(0x228822);
         elfG.fillCircle(16, 16, 12);
@@ -268,6 +294,7 @@ class MainScene extends Phaser.Scene {
         elfG.fillRect(18, 12, 4, 4);
         elfG.generateTexture('elf', 32, 32);
         elfG.destroy();
+        */
 
         // Ogre
         const ogreG = this.make.graphics({ x: 0, y: 0 });
@@ -411,7 +438,7 @@ class MainScene extends Phaser.Scene {
         const startRoom = rooms[0];
         const elfX = (startRoom.center.x * 32) + 16;
         const elfY = (startRoom.center.y * 32) + 16;
-        this.elf = this.createToken(elfX, elfY, 'elf', 'Elf');
+        // this.elf = this.createToken(elfX, elfY, 'elf', 'Elf'); // Removed initial elf
 
         const endRoom = rooms[rooms.length - 1];
         const ogreX = (endRoom.center.x * 32) + 16;
@@ -506,6 +533,66 @@ class MainScene extends Phaser.Scene {
         });
 
         return token;
+    }
+
+    addPlayerToken(x: number, y: number, imageUrl: string, name: string) {
+        // Convert screen coordinates to world coordinates
+        const worldPoint = this.cameras.main.getWorldPoint(x, y);
+        const gridX = Math.floor(worldPoint.x / 32) * 32 + 16;
+        const gridY = Math.floor(worldPoint.y / 32) * 32 + 16;
+
+        const key = `player-${name}`;
+
+        const createAndTrackToken = () => {
+            // Check for existing token
+            const existingTokenIndex = this.playerTokens.findIndex(t => t.getData('name') === name);
+            if (existingTokenIndex !== -1) {
+                const oldToken = this.playerTokens[existingTokenIndex];
+                if (this.selectedToken === oldToken) {
+                    this.selectedToken = null;
+                    this.selectionRing.setVisible(false);
+                }
+                oldToken.destroy();
+                this.playerTokens.splice(existingTokenIndex, 1);
+            }
+
+            const token = this.createToken(gridX, gridY, key, name);
+            this.playerTokens.push(token);
+
+            // Scale token to fit tile if needed
+            token.setDisplaySize(32, 32);
+            // Make it circular using a mask
+            const maskShape = this.make.graphics({}).fillCircle(gridX, gridY, 16);
+            const mask = maskShape.createGeometryMask();
+            token.setMask(mask);
+
+            // We need to update the mask position when dragging
+            token.on('drag', () => {
+                maskShape.clear();
+                maskShape.fillCircle(token.x, token.y, 16);
+            });
+            token.on('dragend', () => {
+                maskShape.clear();
+                maskShape.fillCircle(token.x, token.y, 16);
+            });
+        };
+
+        // If texture exists, create token immediately
+        if (this.textures.exists(key)) {
+            createAndTrackToken();
+        } else {
+            // Load texture dynamically
+            this.load.image(key, imageUrl);
+            this.load.once('complete', () => {
+                createAndTrackToken();
+            });
+            this.load.start();
+        }
+    }
+
+    resetPointer() {
+        this.input.activePointer.isDown = false;
+        this.input.activePointer.buttons = 0;
     }
 
     selectToken(token: Phaser.GameObjects.Sprite) {
