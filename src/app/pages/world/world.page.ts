@@ -17,14 +17,18 @@ import { EncounterService } from '../../services/encounter.service';
 import { UserProfile } from '../../core/models/user.model';
 import { Character } from '../../core/models/character.model';
 
+import { EnvironmentSelectionDialogComponent } from './components/environment-selection-dialog/environment-selection-dialog.component';
+
 @Component({
   selector: 'app-world',
   standalone: true,
-  imports: [CommonModule, FormsModule, ChatComponent, PartySidebarComponent, GameActionsComponent, PlayerEditPopupComponent, BattleMapComponent, EncounterTrackerComponent],
+  imports: [CommonModule, FormsModule, ChatComponent, PartySidebarComponent, GameActionsComponent, PlayerEditPopupComponent, BattleMapComponent, EncounterTrackerComponent, EnvironmentSelectionDialogComponent],
   templateUrl: './world.page.html',
   styleUrls: ['./world.page.css']
 })
 export class WorldPage implements OnInit, OnDestroy {
+
+
   private document = inject(DOCUMENT);
   private chatService = inject(ChatService);
   private userService = inject(UserService);
@@ -50,6 +54,7 @@ export class WorldPage implements OnInit, OnDestroy {
   };
 
   showPlayerPopup = false;
+  showEnvironmentDialog = false;
 
   constructor() {
     this.chatMessages$ = this.chatService.getMessages().pipe(
@@ -159,6 +164,15 @@ export class WorldPage implements OnInit, OnDestroy {
   }
 
   onGenerateMap() {
-    this.battleMap.generateNewMap();
+    this.showEnvironmentDialog = true;
+  }
+
+  onEnvironmentSelected(type: string) {
+    this.showEnvironmentDialog = false;
+    this.battleMap.generateNewMap(type);
+  }
+
+  onEnvironmentCancel() {
+    this.showEnvironmentDialog = false;
   }
 }

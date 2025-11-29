@@ -63,10 +63,10 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
         this.game = new Phaser.Game(config);
     }
 
-    generateNewMap() {
+    generateNewMap(environmentType: string = 'dungeon') {
         const scene = this.game?.scene.getScene('MainScene') as MainScene;
         if (scene) {
-            scene.generateNewMap();
+            scene.generateNewMap(environmentType);
         }
     }
 
@@ -420,7 +420,8 @@ class MainScene extends Phaser.Scene {
         this.visibleTiles = Array(this.mapHeight).fill(false).map(() => Array(this.mapWidth).fill(false));
     }
 
-    generateNewMap() {
+    generateNewMap(environmentType: string = 'dungeon') {
+        console.log('Generating map for environment:', environmentType);
         const generator = new DungeonGenerator(this.mapWidth, this.mapHeight);
         const dungeonData = generator.generate();
 

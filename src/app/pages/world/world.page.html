@@ -20,4 +20,8 @@
     <app-player-edit-popup *ngIf="showPlayerPopup" [playerCharacter]="playerCharacter"
         (save)="onSavePlayerStats($event)" (cancel)="closePlayerPopup()">
     </app-player-edit-popup>
+
+    <app-environment-selection-dialog *ngIf="showEnvironmentDialog" (select)="onEnvironmentSelected($event)"
+        (cancel)="onEnvironmentCancel()">
+    </app-environment-selection-dialog>
 </div>
