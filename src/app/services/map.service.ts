@@ -7,6 +7,7 @@ export interface MapData {
     rooms: any[];
     doors: any[];
     tokens: any[];
+    entrance?: { x: number, y: number, w: number, h: number };
     createdAt: number;
     width?: number;
     height?: number;
@@ -19,6 +20,7 @@ interface FirestoreMapData {
     rooms: any[];
     doors: any[];
     tokens: any[];
+    entrance?: { x: number, y: number, w: number, h: number };
     createdAt: number;
 }
 
@@ -56,7 +58,8 @@ export class MapService {
                     tokens: data.tokens,
                     createdAt: data.createdAt,
                     width: data.width,
-                    height: data.height
+                    height: data.height,
+                    entrance: data.entrance
                 };
 
                 this.currentMapSubject.next(mapData);
@@ -88,6 +91,7 @@ export class MapService {
                 rooms: mapData.rooms,
                 doors: mapData.doors,
                 tokens: mapData.tokens,
+                entrance: mapData.entrance,
                 createdAt: mapData.createdAt
             };
 
