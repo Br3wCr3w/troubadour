@@ -167,7 +167,7 @@ export class WorldPage implements OnInit, OnDestroy {
     this.showEnvironmentDialog = true;
   }
 
-  onEnvironmentSelected(type: string) {
+  onEnvironmentSelected(type: 'dungeon' | 'forest' | 'town') {
     this.showEnvironmentDialog = false;
     this.battleMap.generateNewMap(type);
   }

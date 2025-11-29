@@ -64,7 +64,7 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
         this.game = new Phaser.Game(config);
     }
 
-    generateNewMap(environmentType: string = 'dungeon') {
+    generateNewMap(environmentType: 'dungeon' | 'forest' | 'town' = 'dungeon') {
         const scene = this.game?.scene.getScene('MainScene') as MainScene;
         if (scene) {
             scene.generateNewMap(environmentType);

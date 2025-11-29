@@ -2,10 +2,10 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-    selector: 'app-environment-selection-dialog',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-environment-selection-dialog',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
     <div class="popup-overlay" (click)="onCancel()">
       <div class="popup-content" (click)="$event.stopPropagation()">
         <h2>Select Environment</h2>
@@ -29,7 +29,7 @@ import { CommonModule } from '@angular/common';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .popup-overlay {
       position: fixed;
       top: 0;
@@ -123,14 +123,14 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class EnvironmentSelectionDialogComponent {
-    @Output() select = new EventEmitter<string>();
-    @Output() cancel = new EventEmitter<void>();
+  @Output() select = new EventEmitter<'dungeon' | 'forest' | 'town'>();
+  @Output() cancel = new EventEmitter<void>();
 
-    selectEnvironment(type: string) {
-        this.select.emit(type);
-    }
+  selectEnvironment(type: 'dungeon' | 'forest' | 'town') {
+    this.select.emit(type);
+  }
 
-    onCancel() {
-        this.cancel.emit();
-    }
+  onCancel() {
+    this.cancel.emit();
+  }
 }

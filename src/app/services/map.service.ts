@@ -11,6 +11,7 @@ export interface MapData {
     createdAt: number;
     width?: number;
     height?: number;
+    environmentType?: 'dungeon' | 'forest' | 'town';
 }
 
 interface FirestoreMapData {
@@ -22,6 +23,7 @@ interface FirestoreMapData {
     tokens: any[];
     entrance?: { x: number, y: number, w: number, h: number };
     createdAt: number;
+    environmentType?: 'dungeon' | 'forest' | 'town';
 }
 
 @Injectable({
@@ -59,7 +61,8 @@ export class MapService {
                     createdAt: data.createdAt,
                     width: data.width,
                     height: data.height,
-                    entrance: data.entrance
+                    entrance: data.entrance,
+                    environmentType: data.environmentType || 'dungeon'
                 };
 
                 this.currentMapSubject.next(mapData);
@@ -92,7 +95,8 @@ export class MapService {
                 doors: mapData.doors,
                 tokens: mapData.tokens,
                 entrance: mapData.entrance,
-                createdAt: mapData.createdAt
+                createdAt: mapData.createdAt,
+                environmentType: mapData.environmentType
             };
 
             await setDoc(this.mapDocRef, firestoreData);

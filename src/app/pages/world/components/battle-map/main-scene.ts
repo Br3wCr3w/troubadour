@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { MapService, MapData } from '../../../../services/map.service';
 import { DungeonGenerator } from './dungeon-generator';
+import { ForestGenerator } from './forest-generator';
 
 export class MainScene extends Phaser.Scene {
     private tileSize = 32;
@@ -28,7 +29,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        // --- 1. Realistic Floor Texture ---
+        // --- 1. Realistic Floor Texture (Dungeon) ---
         const floorG = this.make.graphics({ x: 0, y: 0 });
         floorG.fillStyle(0x222222);
         floorG.fillRect(0, 0, 32, 32);
@@ -41,7 +42,21 @@ export class MainScene extends Phaser.Scene {
         floorG.generateTexture('floor', 32, 32);
         floorG.destroy();
 
-        // --- 2. 3D Wall Texture ---
+        // --- 1b. Realistic Grass Texture (Forest) ---
+        const grassG = this.make.graphics({ x: 0, y: 0 });
+        grassG.fillStyle(0x2d5a27); // Base dark green
+        grassG.fillRect(0, 0, 32, 32);
+        for (let i = 0; i < 50; i++) {
+            // Random blades of grass / variation
+            grassG.fillStyle(Math.random() > 0.5 ? 0x3e7a36 : 0x1e3a1a, 0.6);
+            const x = Math.random() * 32;
+            const y = Math.random() * 32;
+            grassG.fillRect(x, y, 2, 3);
+        }
+        grassG.generateTexture('grass', 32, 32);
+        grassG.destroy();
+
+        // --- 2. 3D Wall Texture (Dungeon) ---
         const wallG = this.make.graphics({ x: 0, y: 0 });
         // Top
         wallG.fillStyle(0x555555);
@@ -64,6 +79,21 @@ export class MainScene extends Phaser.Scene {
         wallG.fillRect(2, 26, 6, 4);
         wallG.generateTexture('wall', 32, 32);
         wallG.destroy();
+
+        // --- 2b. Tree Texture (Forest Wall) ---
+        const treeG = this.make.graphics({ x: 0, y: 0 });
+        // Base/Shadow
+        treeG.fillStyle(0x1a2e15);
+        treeG.fillCircle(16, 16, 14);
+        // Layers of leaves
+        treeG.fillStyle(0x2d5a27);
+        treeG.fillCircle(16, 16, 12);
+        treeG.fillStyle(0x3e7a36);
+        treeG.fillCircle(12, 12, 8);
+        treeG.fillStyle(0x4ea044);
+        treeG.fillCircle(14, 10, 5);
+        treeG.generateTexture('tree', 32, 32);
+        treeG.destroy();
 
         // --- 3. Shadow Texture ---
         const shadowG = this.make.graphics({ x: 0, y: 0 });
@@ -184,19 +214,29 @@ export class MainScene extends Phaser.Scene {
         this.visibleTiles = Array(this.mapHeight).fill(false).map(() => Array(this.mapWidth).fill(false));
     }
 
-    generateNewMap(environmentType: string = 'dungeon') {
+    generateNewMap(environmentType: 'dungeon' | 'forest' | 'town' = 'dungeon') {
         console.log('Generating map for environment:', environmentType);
-        const generator = new DungeonGenerator(this.mapWidth, this.mapHeight);
-        const dungeonData = generator.generate();
+
+        let mapDataResult;
+
+        if (environmentType === 'forest') {
+            const generator = new ForestGenerator(this.mapWidth, this.mapHeight);
+            mapDataResult = generator.generate();
+        } else {
+            // Default to dungeon for now (including 'town' until implemented)
+            const generator = new DungeonGenerator(this.mapWidth, this.mapHeight);
+            mapDataResult = generator.generate();
+        }
 
         // Create initial map data structure
         const mapData: MapData = {
-            grid: dungeonData.map,
-            rooms: dungeonData.rooms,
-            doors: dungeonData.doors,
+            grid: mapDataResult.map,
+            rooms: mapDataResult.rooms,
+            doors: mapDataResult.doors,
             tokens: [], // Initial tokens will be added during render or separately
             createdAt: Date.now(),
-            entrance: dungeonData.entrance || undefined
+            entrance: mapDataResult.entrance || undefined,
+            environmentType: environmentType
         };
 
         this.mapService.saveMap(mapData);
@@ -250,10 +290,14 @@ export class MainScene extends Phaser.Scene {
         const grid = dungeonData.grid;
         const doors = dungeonData.doors;
         this.entrance = dungeonData.entrance || null;
+        const envType = dungeonData.environmentType || 'dungeon';
+
+        const floorTexture = envType === 'forest' ? 'grass' : 'floor';
+        const wallTexture = envType === 'forest' ? 'tree' : 'wall';
 
         // 1. Render Floor (Layer 0)
         this.tilemap = this.make.tilemap({ tileWidth: 32, tileHeight: 32, width: this.mapWidth, height: this.mapHeight });
-        const tileset = this.tilemap.addTilesetImage('floor', undefined, 32, 32);
+        const tileset = this.tilemap.addTilesetImage(floorTexture, undefined, 32, 32);
         if (tileset) {
             const layer = this.tilemap.createBlankLayer('Floor', tileset);
             if (layer) {
@@ -262,7 +306,8 @@ export class MainScene extends Phaser.Scene {
                     for (let x = 0; x < this.mapWidth; x++) {
                         if (grid[y][x] === 1) {
                             const tile = this.floorLayer.putTileAt(0, x, y);
-                            if (Math.random() > 0.9) tile.tint = 0xdddddd;
+                            if (envType === 'dungeon' && Math.random() > 0.9) tile.tint = 0xdddddd;
+                            if (envType === 'forest') tile.tint = 0xffffff; // Keep grass green
                             this.objectMap[y][x].floor = tile;
                         }
                     }
@@ -275,11 +320,11 @@ export class MainScene extends Phaser.Scene {
             for (let x = 0; x < this.mapWidth; x++) {
                 if (grid[y][x] === 0) {
                     if (this.hasAdjacentFloor(grid, x, y)) {
-                        const wall = this.add.image(x * 32 + 16, y * 32 + 16, 'wall').setDepth(10);
+                        const wall = this.add.image(x * 32 + 16, y * 32 + 16, wallTexture).setDepth(10);
                         this.wallsGroup.add(wall);
                         this.objectMap[y][x].walls.push(wall);
 
-                        // Shadow
+                        // Shadow (Only for dungeon walls usually, but trees cast shadows too)
                         if (y + 1 < this.mapHeight && grid[y + 1][x] === 1) {
                             const shadow = this.add.image(x * 32 + 16, (y + 1) * 32 + 8, 'shadow').setDepth(5);
                             this.wallsGroup.add(shadow);
@@ -287,8 +332,8 @@ export class MainScene extends Phaser.Scene {
                             this.objectMap[y + 1][x].shadows.push(shadow);
                         }
 
-                        // Torch
-                        if (Math.random() > 0.95) {
+                        // Torch (Only in dungeon)
+                        if (envType === 'dungeon' && Math.random() > 0.95) {
                             const torch = this.add.image(x * 32 + 16, y * 32 + 16, 'torch').setDepth(11);
                             const light = this.add.circle(x * 32 + 16, y * 32 + 16, 60, 0xFFAA00, 0.1).setDepth(11);
                             light.setBlendMode(Phaser.BlendModes.ADD);
