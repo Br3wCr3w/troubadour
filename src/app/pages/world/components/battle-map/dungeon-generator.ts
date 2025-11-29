@@ -4,7 +4,7 @@ export class DungeonGenerator {
     map: number[][] = [];
     rooms: any[] = [];
     doors: any[] = [];
-    entrance: { x: number, y: number, w: number, h: number } | null = null;
+    entrance: { x: number, y: number, w: number, h: number, center?: { x: number, y: number } } | null = null;
 
     constructor(width: number, height: number) {
         this.width = width;

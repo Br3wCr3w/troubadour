@@ -5,7 +5,7 @@ export class ForestGenerator {
     // We might not have "rooms" in the traditional sense, but we can define clearings
     rooms: any[] = [];
     doors: any[] = []; // No doors in forest usually, but keeping structure
-    entrance: { x: number, y: number, w: number, h: number } | null = null;
+    entrance: { x: number, y: number, w: number, h: number, center?: { x: number, y: number } } | null = null;
 
     constructor(width: number, height: number) {
         this.width = width;
@@ -64,7 +64,13 @@ export class ForestGenerator {
 
             // Check if 3x3 area is clear
             if (this.isAreaClear(x, y, 3, 3)) {
-                this.entrance = { x, y, w: 3, h: 3 };
+                this.entrance = {
+                    x,
+                    y,
+                    w: 3,
+                    h: 3,
+                    center: { x: x + 1, y: y + 1 } // Center of 3x3
+                };
                 this.rooms.push(this.entrance); // Treat entrance as a room for spawn logic
                 entranceFound = true;
             }

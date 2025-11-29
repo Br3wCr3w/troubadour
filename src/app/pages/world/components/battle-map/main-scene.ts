@@ -378,17 +378,25 @@ export class MainScene extends Phaser.Scene {
             // If this is a fresh map, we should have rooms.
             if (dungeonData.rooms && dungeonData.rooms.length > 0) {
                 const startRoom = dungeonData.rooms[0];
-                const elfX = (startRoom.center.x * 32) + 16;
-                const elfY = (startRoom.center.y * 32) + 16;
+                console.log('Start Room:', startRoom); // Debug logging
+
+                if (startRoom && startRoom.center) {
+                    const elfX = (startRoom.center.x * 32) + 16;
+                    const elfY = (startRoom.center.y * 32) + 16;
+                    console.log('Centering Camera on:', elfX, elfY);
+                    this.cameras.main.centerOn(elfX, elfY);
+                } else {
+                    console.warn('Start room or center is missing!', startRoom);
+                }
 
                 const endRoom = dungeonData.rooms[dungeonData.rooms.length - 1];
-                const ogreX = (endRoom.center.x * 32);
-                const ogreY = (endRoom.center.y * 32);
+                if (endRoom && endRoom.center) {
+                    const ogreX = (endRoom.center.x * 32);
+                    const ogreY = (endRoom.center.y * 32);
 
-                const ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
-                this.monsterTokens.push(ogre);
-
-                this.cameras.main.centerOn(elfX, elfY);
+                    const ogre = this.createToken(ogreX + 32, ogreY + 32, 'ogre', 'Ogre', 'large');
+                    this.monsterTokens.push(ogre);
+                }
 
                 // Save initial state including the Ogre
                 this.saveTokenState();

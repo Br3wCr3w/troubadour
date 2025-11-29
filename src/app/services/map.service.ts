@@ -7,7 +7,7 @@ export interface MapData {
     rooms: any[];
     doors: any[];
     tokens: any[];
-    entrance?: { x: number, y: number, w: number, h: number };
+    entrance?: { x: number, y: number, w: number, h: number, center?: { x: number, y: number } };
     createdAt: number;
     width?: number;
     height?: number;
@@ -21,7 +21,7 @@ interface FirestoreMapData {
     rooms: any[];
     doors: any[];
     tokens: any[];
-    entrance?: { x: number, y: number, w: number, h: number };
+    entrance?: { x: number, y: number, w: number, h: number, center?: { x: number, y: number } };
     createdAt: number;
     environmentType?: 'dungeon' | 'forest' | 'town';
 }
