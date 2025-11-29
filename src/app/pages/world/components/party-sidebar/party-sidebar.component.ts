@@ -26,7 +26,7 @@ import { UserProfile } from '../../../../core/models/user.model';
             <!-- Flyout Menu -->
             <div class="flyout-menu" [class.visible]="activeMenuId === playerCharacter.name">
                 <button class="flyout-btn edit" (click)="onOpenPlayerPopup()" title="Edit Character">✏️</button>
-                <button class="flyout-btn target" (click)="onTargetPlayer(playerCharacter.name)" title="Locate on Map">🎯</button>
+                <button class="flyout-btn target" (click)="onTargetPlayer(playerCharacter.name)" title="Locate on Map">⌖</button>
             </div>
         </div>
 
@@ -49,7 +49,7 @@ import { UserProfile } from '../../../../core/models/user.model';
 
             <!-- Flyout Menu for Party Members -->
             <div class="flyout-menu" [class.visible]="activeMenuId === (user.displayName || 'Anon')">
-                <button class="flyout-btn target" (click)="onTargetPlayer(user.displayName || 'Anon')" title="Locate on Map">🎯</button>
+                <button class="flyout-btn target" (click)="onTargetPlayer(user.displayName || 'Anon')" title="Locate on Map">⌖</button>
             </div>
         </div>
     </div>
@@ -149,17 +149,17 @@ import { UserProfile } from '../../../../core/models/user.model';
     /* Flyout Menu Styles */
     .flyout-menu {
         position: absolute;
-        top: 10px;
+        top: 0; /* Aligned with 70px card */
         left: 35px; /* Center of card */
-        height: 50px;
+        height: 70px;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding-left: 45px; /* Space for the main card */
-        padding-right: 15px;
-        background: rgba(0, 0, 0, 0.8);
-        border: 1px solid #c96;
-        border-radius: 25px;
+        padding-left: 50px; /* Space for the main card */
+        padding-right: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid #c96;
+        border-radius: 50px;
         z-index: 1; /* Behind card */
         
         /* Animation */
@@ -182,7 +182,7 @@ import { UserProfile } from '../../../../core/models/user.model';
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        border: 1px solid #fff;
+        border: 2px solid #fff;
         background: linear-gradient(135deg, #444, #222);
         font-size: 1.2rem;
         cursor: pointer;
@@ -190,6 +190,7 @@ import { UserProfile } from '../../../../core/models/user.model';
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 
     .flyout-btn:hover {
@@ -203,6 +204,8 @@ import { UserProfile } from '../../../../core/models/user.model';
 
     .flyout-btn.target {
         border-color: #5af;
+        font-size: 1.4rem;
+        font-weight: bold;
     }
   `]
 })

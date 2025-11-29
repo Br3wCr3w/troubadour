@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
     template: `
     <div class="action-panel">
         <div class="main-actions" [class.visible]="showActions">
-            <button class="action-btn attack">⚔️</button>
+            <button class="action-btn attack" (click)="onStartEncounter()">⚔️</button>
             <button class="action-btn defend">🛡️</button>
             <button class="action-btn item">🧪</button>
         </div>
@@ -116,6 +116,7 @@ import { CommonModule } from '@angular/common';
 })
 export class GameActionsComponent {
     @Output() generateMap = new EventEmitter<void>();
+    @Output() startEncounter = new EventEmitter<void>();
     showActions = false;
 
     toggleActions() {
@@ -124,5 +125,9 @@ export class GameActionsComponent {
 
     onGenerateMap() {
         this.generateMap.emit();
+    }
+
+    onStartEncounter() {
+        this.startEncounter.emit();
     }
 }
