@@ -9,32 +9,47 @@ import { UserProfile } from '../../../../core/models/user.model';
     template: `
     <div class="party-sidebar">
         <!-- Logged In User -->
-        <div class="character-card player-card" (click)="onOpenPlayerPopup()" draggable="true" (dragstart)="onDragStart($event)">
-            <div class="char-avatar" [style.background-color]="'#444'">
-                <img *ngIf="playerCharacter.image" [src]="playerCharacter.image" class="avatar-img" alt="Player Avatar">
-                <span *ngIf="!playerCharacter.image" class="char-initial">{{playerCharacter.name[0]}}</span>
-            </div>
-            <div class="char-info">
-                <div class="hp-bar">
-                    <div class="hp-fill player-hp" [style.width.%]="(playerCharacter.hp / playerCharacter.maxHp) * 100">
+        <div class="character-container">
+            <div class="character-card player-card" (click)="toggleMenu(playerCharacter.name)" draggable="true" (dragstart)="onDragStart($event)">
+                <div class="char-avatar" [style.background-color]="'#444'">
+                    <img *ngIf="playerCharacter.image" [src]="playerCharacter.image" class="avatar-img" alt="Player Avatar">
+                    <span *ngIf="!playerCharacter.image" class="char-initial">{{playerCharacter.name[0]}}</span>
+                </div>
+                <div class="char-info">
+                    <div class="hp-bar">
+                        <div class="hp-fill player-hp" [style.width.%]="(playerCharacter.hp / playerCharacter.maxHp) * 100">
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Flyout Menu -->
+            <div class="flyout-menu" [class.visible]="activeMenuId === playerCharacter.name">
+                <button class="flyout-btn edit" (click)="onOpenPlayerPopup()" title="Edit Character">✏️</button>
+                <button class="flyout-btn target" (click)="onTargetPlayer(playerCharacter.name)" title="Locate on Map">🎯</button>
+            </div>
         </div>
 
-        <div class="character-card" *ngFor="let user of party" [title]="user.displayName">
-            <div class="char-avatar" [style.background-color]="getUserColor(user.displayName || 'Anon')">
-                <img *ngIf="user.photoURL" [src]="user.photoURL" class="avatar-img" [alt]="user.displayName">
-                <span *ngIf="!user.photoURL" class="char-initial">{{(user.displayName || 'A')[0]}}</span>
+        <div class="character-container" *ngFor="let user of party">
+            <div class="character-card" (click)="toggleMenu(user.displayName || 'Anon')" [title]="user.displayName">
+                <div class="char-avatar" [style.background-color]="getUserColor(user.displayName || 'Anon')">
+                    <img *ngIf="user.photoURL" [src]="user.photoURL" class="avatar-img" [alt]="user.displayName">
+                    <span *ngIf="!user.photoURL" class="char-initial">{{(user.displayName || 'A')[0]}}</span>
+                </div>
+                <div class="char-info">
+                    <!-- Mock HP/MP for other users since we don't have that data yet -->
+                    <div class="hp-bar">
+                        <div class="hp-fill" [style.width.%]="100"></div>
+                    </div>
+                    <div class="mp-bar">
+                        <div class="mp-fill" [style.width.%]="100"></div>
+                    </div>
+                </div>
             </div>
-            <div class="char-info">
-                <!-- Mock HP/MP for other users since we don't have that data yet -->
-                <div class="hp-bar">
-                    <div class="hp-fill" [style.width.%]="100"></div>
-                </div>
-                <div class="mp-bar">
-                    <div class="mp-fill" [style.width.%]="100"></div>
-                </div>
+
+            <!-- Flyout Menu for Party Members -->
+            <div class="flyout-menu" [class.visible]="activeMenuId === (user.displayName || 'Anon')">
+                <button class="flyout-btn target" (click)="onTargetPlayer(user.displayName || 'Anon')" title="Locate on Map">🎯</button>
             </div>
         </div>
     </div>
@@ -51,6 +66,12 @@ import { UserProfile } from '../../../../core/models/user.model';
         z-index: 90;
     }
 
+    .character-container {
+        position: relative;
+        width: 70px;
+        height: 70px;
+    }
+
     .character-card {
         width: 70px;
         height: 70px;
@@ -59,6 +80,7 @@ import { UserProfile } from '../../../../core/models/user.model';
         border-radius: 50%;
         background: #222;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        z-index: 2; /* Above flyout */
     }
 
     .char-avatar {
@@ -123,15 +145,91 @@ import { UserProfile } from '../../../../core/models/user.model';
     .hp-fill.player-hp {
         background: #f33;
     }
+
+    /* Flyout Menu Styles */
+    .flyout-menu {
+        position: absolute;
+        top: 10px;
+        left: 35px; /* Center of card */
+        height: 50px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-left: 45px; /* Space for the main card */
+        padding-right: 15px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid #c96;
+        border-radius: 25px;
+        z-index: 1; /* Behind card */
+        
+        /* Animation */
+        opacity: 0;
+        transform: translateX(-20px) scale(0.8);
+        transform-origin: left center;
+        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        pointer-events: none;
+        visibility: hidden;
+    }
+
+    .flyout-menu.visible {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
+        visibility: visible;
+    }
+
+    .flyout-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid #fff;
+        background: linear-gradient(135deg, #444, #222);
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: transform 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .flyout-btn:hover {
+        transform: scale(1.1);
+        background: linear-gradient(135deg, #555, #333);
+    }
+
+    .flyout-btn.edit {
+        border-color: #fb3;
+    }
+
+    .flyout-btn.target {
+        border-color: #5af;
+    }
   `]
 })
 export class PartySidebarComponent {
     @Input() party: UserProfile[] | null = [];
     @Input() playerCharacter: any;
     @Output() openPlayerPopup = new EventEmitter<void>();
+    @Output() targetPlayer = new EventEmitter<string>();
+
+    activeMenuId: string | null = null;
+
+    toggleMenu(id: string) {
+        if (this.activeMenuId === id) {
+            this.activeMenuId = null;
+        } else {
+            this.activeMenuId = id;
+        }
+    }
 
     onOpenPlayerPopup() {
         this.openPlayerPopup.emit();
+        this.activeMenuId = null; // Close menu
+    }
+
+    onTargetPlayer(id: string) {
+        this.targetPlayer.emit(id);
+        this.activeMenuId = null; // Close menu
     }
 
     onDragStart(event: DragEvent) {

@@ -114,4 +114,11 @@ export class BattleMapComponent implements AfterViewInit, OnDestroy {
         }
         return [];
     }
+
+    public centerOnToken(tokenId: string) {
+        const scene = this.game?.scene.getScene('MainScene') as MainScene;
+        if (scene) {
+            scene.centerOnToken(tokenId);
+        }
+    }
 }

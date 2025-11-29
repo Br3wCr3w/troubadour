@@ -175,4 +175,10 @@ export class WorldPage implements OnInit, OnDestroy {
   onEnvironmentCancel() {
     this.showEnvironmentDialog = false;
   }
+
+  onTargetPlayer(playerId: string) {
+    if (this.battleMap) {
+      this.battleMap.centerOnToken(playerId);
+    }
+  }
 }

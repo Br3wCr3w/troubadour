@@ -790,4 +790,24 @@ export class MainScene extends Phaser.Scene {
         }
         return false;
     }
+
+    centerOnToken(tokenId: string) {
+        // Search in player tokens
+        const playerToken = this.playerTokens.find(t => t.getData('name') === tokenId);
+        if (playerToken) {
+            this.cameras.main.centerOn(playerToken.x, playerToken.y);
+            this.cameras.main.zoomTo(1.5, 1000); // Zoom in for better visibility
+            this.selectToken(playerToken);
+            return;
+        }
+
+        // Search in monster tokens
+        const monsterToken = this.monsterTokens.find(t => t.getData('name') === tokenId);
+        if (monsterToken) {
+            this.cameras.main.centerOn(monsterToken.x, monsterToken.y);
+            this.cameras.main.zoomTo(1.5, 1000);
+            this.selectToken(monsterToken);
+            return;
+        }
+    }
 }

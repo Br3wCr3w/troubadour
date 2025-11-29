@@ -2,7 +2,7 @@
     <app-battle-map class="battle-map"></app-battle-map>
 
     <app-party-sidebar class="party-sidebar" [party]="party$ | async" [playerCharacter]="playerCharacter"
-        (openPlayerPopup)="openPlayerPopup()">
+        (openPlayerPopup)="openPlayerPopup()" (targetPlayer)="onTargetPlayer($event)">
     </app-party-sidebar>
 
     <div class="top-bar" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100;">
