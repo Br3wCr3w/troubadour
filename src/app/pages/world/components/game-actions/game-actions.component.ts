@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
     <div class="action-panel">
         <div class="main-actions" [class.visible]="showActions">
             <button class="action-btn attack" (click)="onStartEncounter()">⚔️</button>
-            <button class="action-btn defend">🛡️</button>
+            <button class="action-btn map" (click)="onGenerateMap()">🗺️</button>
             <button class="action-btn item">🧪</button>
         </div>
         <div class="spell-slot" (click)="toggleActions()">🔮</div>
@@ -78,9 +78,9 @@ import { CommonModule } from '@angular/common';
         background: linear-gradient(135deg, #833, #422);
     }
 
-    .action-btn.defend {
-        border-color: #55f;
-        background: linear-gradient(135deg, #338, #224);
+    .action-btn.map {
+        border-color: #5ff;
+        background: linear-gradient(135deg, #244, #133);
     }
 
     .action-btn.item {
