@@ -7,12 +7,12 @@ import { CommonModule } from '@angular/common';
     imports: [CommonModule],
     template: `
     <div class="action-panel">
-        <div class="main-actions">
+        <div class="main-actions" [class.visible]="showActions">
             <button class="action-btn attack">⚔️</button>
             <button class="action-btn defend">🛡️</button>
             <button class="action-btn item">🧪</button>
         </div>
-        <div class="spell-slot" (click)="onGenerateMap()">🔮</div>
+        <div class="spell-slot" (click)="toggleActions()">🔮</div>
     </div>
   `,
     styles: [`
@@ -21,9 +21,16 @@ import { CommonModule } from '@angular/common';
         bottom: 20px;
         right: 20px;
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         gap: 20px;
         z-index: 90;
+        /* Ensure the panel doesn't block clicks outside its children */
+        pointer-events: none; 
+    }
+
+    /* Re-enable pointer events for interactive elements */
+    .action-panel > * {
+        pointer-events: auto;
     }
 
     .main-actions {
@@ -33,6 +40,21 @@ import { CommonModule } from '@angular/common';
         padding: 10px 20px;
         border-radius: 50px;
         border: 2px solid #c96;
+        
+        /* Animation properties */
+        opacity: 0;
+        transform: translateX(50px) scale(0.8);
+        transform-origin: right center;
+        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        pointer-events: none; /* Disable clicks when hidden */
+        visibility: hidden; /* Hide from accessibility tree when hidden */
+    }
+
+    .main-actions.visible {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
+        visibility: visible;
     }
 
     .action-btn {
@@ -78,11 +100,27 @@ import { CommonModule } from '@angular/common';
         font-size: 2rem;
         box-shadow: 0 0 20px #a0f;
         cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        z-index: 100; /* Keep above the actions */
+    }
+
+    .spell-slot:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px #d0f;
+    }
+    
+    .spell-slot:active {
+        transform: scale(0.95);
     }
   `]
 })
 export class GameActionsComponent {
     @Output() generateMap = new EventEmitter<void>();
+    showActions = false;
+
+    toggleActions() {
+        this.showActions = !this.showActions;
+    }
 
     onGenerateMap() {
         this.generateMap.emit();
