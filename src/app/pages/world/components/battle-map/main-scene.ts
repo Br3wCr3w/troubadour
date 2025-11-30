@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { MapService, MapData } from '../../../../services/map.service';
 import { DungeonGenerator } from './dungeon-generator';
 import { ForestGenerator } from './forest-generator';
+import { TownGenerator } from './town-generator';
 
 export class MainScene extends Phaser.Scene {
     private tileSize = 32;
@@ -152,28 +153,61 @@ export class MainScene extends Phaser.Scene {
 
         // --- 7. Door Texture ---
         const doorG = this.make.graphics({ x: 0, y: 0 });
-        // Door Frame/Base
-        doorG.fillStyle(0x5C4033); // Dark Wood
+        doorG.fillStyle(0x3b2415, 1);
         doorG.fillRect(0, 0, 32, 32);
-        // Planks
-        doorG.lineStyle(2, 0x3e2b22);
-        doorG.beginPath();
-        doorG.moveTo(10, 0); doorG.lineTo(10, 32);
-        doorG.moveTo(22, 0); doorG.lineTo(22, 32);
-        doorG.strokePath();
-        // Iron Bands
-        doorG.fillStyle(0x555555); // Iron
-        doorG.fillRect(0, 6, 32, 4);
-        doorG.fillRect(0, 22, 32, 4);
-        // Rivets
-        doorG.fillStyle(0x888888);
-        doorG.fillCircle(4, 8, 1); doorG.fillCircle(28, 8, 1);
-        doorG.fillCircle(4, 24, 1); doorG.fillCircle(28, 24, 1);
-        // Knob
-        doorG.fillStyle(0xFFD700);
-        doorG.fillCircle(26, 16, 3);
-        doorG.generateTexture('door', 32, 32);
+        doorG.fillStyle(0x5c3c23, 1);
+        doorG.fillRect(4, 4, 32 - 8, 32 - 8);
+        doorG.fillStyle(0xf5d28c, 1);
+        doorG.fillCircle(32 - 8, 32 / 2, 2);
+        doorG.generateTexture('tile_door', 32, 32);
         doorG.destroy();
+
+        // --- 8. Cobble Texture ---
+        const cobbleG = this.make.graphics({ x: 0, y: 0 });
+        cobbleG.fillStyle(0x888888, 1);
+        cobbleG.fillRect(0, 0, 32, 32);
+        cobbleG.lineStyle(1, 0x666666, 1);
+        for (let x = 0; x < 32; x += 8) {
+            cobbleG.strokeLineShape(new Phaser.Geom.Line(x, 0, x, 32));
+        }
+        for (let y = 0; y < 32; y += 8) {
+            cobbleG.strokeLineShape(new Phaser.Geom.Line(0, y, 32, y));
+        }
+        cobbleG.generateTexture('tile_cobble', 32, 32);
+        cobbleG.destroy();
+
+        // --- 9. Roof Texture ---
+        const roofG = this.make.graphics({ x: 0, y: 0 });
+        roofG.fillStyle(0x7b3f2a, 1);
+        roofG.fillRect(0, 0, 32, 32);
+        roofG.lineStyle(2, 0x5b2515, 0.8);
+        for (let y = 6; y < 32; y += 6) {
+            roofG.strokeLineShape(new Phaser.Geom.Line(0, y, 32, y));
+        }
+        roofG.generateTexture('tile_roof', 32, 32);
+        roofG.destroy();
+
+        // --- 10. Water Texture ---
+        const waterG = this.make.graphics({ x: 0, y: 0 });
+        waterG.fillStyle(0x1a4f7f, 1);
+        waterG.fillRect(0, 0, 32, 32);
+        waterG.lineStyle(1, 0x2a7fbf, 0.7);
+        for (let i = 0; i < 5; i++) {
+            const y = Phaser.Math.Between(4, 32 - 4);
+            waterG.strokeLineShape(new Phaser.Geom.Line(2, y, 32 - 2, y));
+        }
+        waterG.generateTexture('tile_water', 32, 32);
+        waterG.destroy();
+
+        // --- 11. Tree Texture ---
+        // --- 11. Tree Texture ---
+        const tileTreeG = this.make.graphics({ x: 0, y: 0 });
+        tileTreeG.fillStyle(0x2f5d25, 1);
+        tileTreeG.fillCircle(32 / 2, 32 / 2, 32 / 2 - 4);
+        tileTreeG.fillStyle(0x1d3a16, 1);
+        tileTreeG.fillRect(32 / 2 - 3, 32 / 2, 6, 32 / 2);
+        tileTreeG.generateTexture('tile_tree', 32, 32);
+        tileTreeG.destroy();
     }
 
     create() {
@@ -222,8 +256,11 @@ export class MainScene extends Phaser.Scene {
         if (environmentType === 'forest') {
             const generator = new ForestGenerator(this.mapWidth, this.mapHeight);
             mapDataResult = generator.generate();
+        } else if (environmentType === 'town') {
+            const generator = new TownGenerator(this.mapWidth, this.mapHeight);
+            mapDataResult = generator.generate();
         } else {
-            // Default to dungeon for now (including 'town' until implemented)
+            // Default to dungeon
             const generator = new DungeonGenerator(this.mapWidth, this.mapHeight);
             mapDataResult = generator.generate();
         }
@@ -292,23 +329,58 @@ export class MainScene extends Phaser.Scene {
         this.entrance = dungeonData.entrance || null;
         const envType = dungeonData.environmentType || 'dungeon';
 
-        const floorTexture = envType === 'forest' ? 'grass' : 'floor';
+        const floorTexture = (envType === 'forest' || envType === 'town') ? 'grass' : 'floor';
         const wallTexture = envType === 'forest' ? 'tree' : 'wall';
 
         // 1. Render Floor (Layer 0)
         this.tilemap = this.make.tilemap({ tileWidth: 32, tileHeight: 32, width: this.mapWidth, height: this.mapHeight });
         const tileset = this.tilemap.addTilesetImage(floorTexture, undefined, 32, 32);
+
         if (tileset) {
             const layer = this.tilemap.createBlankLayer('Floor', tileset);
             if (layer) {
                 this.floorLayer = layer.setDepth(0);
                 for (let y = 0; y < this.mapHeight; y++) {
                     for (let x = 0; x < this.mapWidth; x++) {
-                        if (grid[y][x] === 1) {
+                        const cellValue = grid[y][x];
+
+                        // Standard Floor
+                        if (cellValue === 1) {
                             const tile = this.floorLayer.putTileAt(0, x, y);
                             if (envType === 'dungeon' && Math.random() > 0.9) tile.tint = 0xdddddd;
-                            if (envType === 'forest') tile.tint = 0xffffff; // Keep grass green
+                            if (envType === 'forest' || envType === 'town') tile.tint = 0xffffff;
                             this.objectMap[y][x].floor = tile;
+                        }
+
+                        // Medieval Town Tiles
+                        if (envType === 'town') {
+                            let key = null;
+                            let depth = 0;
+                            let isWall = false;
+
+                            switch (cellValue) {
+                                case TownGenerator.COBBLE: key = 'tile_cobble'; break;
+                                case TownGenerator.ROOF: key = 'tile_roof'; depth = 10; isWall = true; break;
+                                case TownGenerator.TREE: key = 'tile_tree'; depth = 10; isWall = true; break;
+                                case TownGenerator.WATER: key = 'tile_water'; isWall = true; break; // Water blocks movement
+                                case TownGenerator.DOOR: key = 'tile_door'; break;
+                            }
+
+                            if (key) {
+                                const img = this.add.image(x * 32 + 16, y * 32 + 16, key).setDepth(depth);
+                                this.wallsGroup.add(img);
+                                if (isWall) {
+                                    this.objectMap[y][x].walls.push(img);
+                                } else {
+                                    this.objectMap[y][x].floor = img;
+                                }
+                                // Special case: Tree needs grass under it
+                                if (cellValue === TownGenerator.TREE) {
+                                    const grass = this.floorLayer.putTileAt(0, x, y);
+                                    grass.tint = 0xffffff;
+                                    this.objectMap[y][x].floor = grass;
+                                }
+                            }
                         }
                     }
                 }
@@ -318,7 +390,9 @@ export class MainScene extends Phaser.Scene {
         // 2. Render Walls, Shadows & Torches (Layer 1)
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
-                if (grid[y][x] === 0) {
+                const cellValue = grid[y][x];
+
+                if (cellValue === 0) { // Standard Wall
                     if (this.hasAdjacentFloor(grid, x, y)) {
                         const wall = this.add.image(x * 32 + 16, y * 32 + 16, wallTexture).setDepth(10);
                         this.wallsGroup.add(wall);
@@ -383,10 +457,8 @@ export class MainScene extends Phaser.Scene {
                 if (startRoom && startRoom.center) {
                     const elfX = (startRoom.center.x * 32) + 16;
                     const elfY = (startRoom.center.y * 32) + 16;
-                    console.log('Centering Camera on:', elfX, elfY);
+                    console.log('Centering Camera on Room:', elfX, elfY);
                     this.cameras.main.centerOn(elfX, elfY);
-                } else {
-                    console.warn('Start room or center is missing!', startRoom);
                 }
 
                 const endRoom = dungeonData.rooms[dungeonData.rooms.length - 1];
@@ -400,13 +472,21 @@ export class MainScene extends Phaser.Scene {
 
                 // Save initial state including the Ogre
                 this.saveTokenState();
+            } else if (dungeonData.entrance) {
+                // Center on entrance
+                const entX = (dungeonData.entrance.x * 32) + (dungeonData.entrance.w * 32 / 2);
+                const entY = (dungeonData.entrance.y * 32) + (dungeonData.entrance.h * 32 / 2);
+                console.log('Centering Camera on Entrance:', entX, entY);
+                this.cameras.main.centerOn(entX, entY);
+            } else {
+                // Center on map center
+                this.cameras.main.centerOn(this.mapWidth * 32 / 2, this.mapHeight * 32 / 2);
             }
         }
 
         // Recalculate visibility after placing tokens
         this.calculateVisibility();
     }
-
 
     createDoor(x: number, y: number, rotation: number, isOpen: boolean = false) {
         const door = this.add.sprite(x * 32 + 16, y * 32 + 16, 'door');
